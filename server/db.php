@@ -8,13 +8,14 @@ $TABLES = array(
 # open db
 $controller = new Controller();
 $out = Output::getInstance();
+$pizza = new Pizza($controller);
+$user = new User($controller, $pizza);
 
 $tables = array_keys($TABLES);
 foreach ($tables as $table) {
     request($controller->getDB(), $table, $TABLES[$table], $retVal);
 }
-$pizza = new Pizza($controller);
-$user = new User($controller);
+
 if (isset($_GET["pizza-users"])) {
     if (!empty($_GET["pizza-users"])) {
         $pizza->getPizzaUsersByID($_GET["pizza-users"]);
@@ -42,7 +43,7 @@ if (isset($http_raw) && !empty($http_raw)) {
         $pizza->addPizza($obj["name"], $obj["maxpersons"], $obj["price"], $obj["content"]);
     }
     if (isset($_GET["set-ready"])) {
-        $pizza->setReady($obj["id"], $obj["bool"]);
+        $user->setReady($obj["id"], $obj["bool"]);
     }
     if (isset($_GET["change-pizza"])) {
         $user->changePizza($obj["id"], $obj["to"]);
@@ -50,6 +51,11 @@ if (isset($http_raw) && !empty($http_raw)) {
     if (isset($_GET["pay"])) {
         if ($controller->checkSecret($obj["secret"])) {
             $user->pay($obj["id"], $obj["bool"]);
+        }
+    }
+    if (isset($_GET["buy-pizza"])) {
+        if ($controller->checkSecret($obj["secret"])) {
+            $pizza->buyPizza($obj["id"]);
         }
     }
 }
@@ -149,7 +155,7 @@ class Output {
 
 class Controller {
 
-    public $db;
+    private $db;
 
     public function __construct() {
 
@@ -161,12 +167,12 @@ class Controller {
             die(json_encode($retVal));
         }
     }
-    
+
     public function checkSecret($secret) {
         $sql = "SELECT * FROM system WHERE key = 'secret'";
-        
+
         $stm = $this->exec($sql, array());
-        
+
         $secretTable = $stm->fetch();
         $stm->closeCursor();
         if ($secretTable["value"] == $secret) {
@@ -257,14 +263,16 @@ class Controller {
 class User {
 
     private $controller;
+    private $pizza;
 
-    public function __construct($controller) {
+    public function __construct($controller, $pizza) {
         $this->controller = $controller;
+        $this->pizza = $pizza;
     }
-    
+
     function changePizza($userid, $to) {
         $out = Output::getInstance();
-        
+
         $sql = "UPDATE users SET pizza = :pizza WHERE id = :id";
 
         $con = $this->controller;
@@ -273,7 +281,7 @@ class User {
             ":pizza" => $to,
             ":id" => $userid
         ));
-        
+
         $out->addStatus("change-pizza", $stm->errorInfo());
         $out->add("change-pizza", $con->getDB()->lastInsertId());
 
@@ -282,7 +290,7 @@ class User {
 
     function pay($id, $bool) {
         $out = Output::getInstance();
-        
+
         $sql = "UPDATE users SET paid = :bool WHERE id = :id";
 
         $con = $this->controller;
@@ -291,11 +299,31 @@ class User {
             ":id" => $id,
             ":bool" => $bool
         ));
-        
+
         $out->addStatus("pay", $stm->errorInfo());
         $out->add("pay", $con->getDB()->lastInsertId());
 
         $stm->closeCursor();
+    }
+
+    function setReady($id, $bool) {
+        $sql = "UPDATE users SET ready = :bool WHERE id = :id";
+
+        $con = $this->controller;
+
+        $stm = $con->exec($sql, array(
+            ":id" => $id,
+            ":bool" => $bool
+        ));
+
+        $out = Output::getInstance();
+
+        $out->addStatus("set-ready", $stm->errorInfo());
+        $out->add("set-ready", $con->getDB()->lastInsertId());
+
+        $stm->closeCursor();
+
+        $this->pizza->checkPizzaLock($id);
     }
 
 }
@@ -306,6 +334,26 @@ class Pizza {
 
     public function __construct($controller) {
         $this->controller = $controller;
+    }
+
+    public function buyPizza($id) {
+        $out = Output::getInstance();
+        if ($this->checkPizzaForLock($id)) {
+
+            $sql = "UPDATE pizzas SET bought = 1 WHERE id = :id";
+
+            $stm = $this->controller->exec($sql, array(
+                ":id" => $id
+            ));
+
+            $out->addStatus("buy-pizza", $stm->errorInfo());
+            $out->add("buy-pizza", $this->controller->getDB()->lastInsertId());
+
+            $stm->closeCursor();
+            return;
+        }
+
+        $out->addStatus("buy-pizza", array("99999", 20, "Pizza is not ready for buy"));
     }
 
     function addPizza($name, $maxPerson, $price, $content) {
@@ -371,44 +419,23 @@ class Pizza {
 
         return $users;
     }
-
-    function setReady($id, $bool) {
-        $sql = "UPDATE users SET ready = :bool WHERE id = :id";
-
-        $con = $this->controller;
-
-        $stm = $con->exec($sql, array(
-            ":id" => $id,
-            ":bool" => $bool
-        ));
-
-        $out = Output::getInstance();
-
-        $out->addStatus("set-ready", $stm->errorInfo());
-        $out->add("set-ready", $con->getDB()->lastInsertId());
-
-        $stm->closeCursor();
-
-        $this->checkPizzaLock($id);
-    }
-
-    function checkPizzaLock($id) {
+    
+    function checkPizzaForLock($pizzaID) {
         $con = $this->controller;
         $out = Output::getInstance();
-        $pizzaID = $this->getPizzaFromUserID($id);
-
-        $sql = "SELECT id FROM users WHERE NOT ready AND pizza = :pizza";
-
+        $out->add("pizzaID", $pizzaID);
+        
+        $sql = "SELECT * FROM users WHERE NOT ready AND pizza = :pizza";
+        
         $stm = $con->exec($sql, array(
             ":pizza" => $pizzaID
         ));
-
-
-        $notReadyUser = $stm->fetch();
+        $notReadyUser = $stm->fetchAll(PDO::FETCH_ASSOC);
         $out->addStatus("notReadyUser", $notReadyUser);
+        $out->addStatus("notReadyUserQuery", $stm->errorInfo());
         if ($notReadyUser) {
             $out->addStatus("pizzalock", "notReady");
-            return;
+            return false;
         }
 
         $maxPerson = $this->getMaxPerson($pizzaID);
@@ -416,11 +443,20 @@ class Pizza {
 
         if ($maxPerson == $currentPersons) {
             $out->addStatus("pizzalock", "ready");
-            $this->lockPizza($pizzaID, true);
-            return;
+            
+            return true;
         }
 
         $out->addStatus("pizzalock", "notReady");
+        return false;
+    }
+
+    function checkPizzaLock($userid) {
+        $pizzaID = $this->getPizzaFromUserID($userid);
+
+        if ($this->checkPizzaForLock($pizzaID)) {
+            $this->lockPizza($pizzaID, true);
+        }
     }
 
     function lockPizza($id, $bool) {
