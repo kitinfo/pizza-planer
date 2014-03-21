@@ -1,6 +1,35 @@
+var api={
+	apiPath:"server/db.php",
+
+	asyncPost:function(call, payload, completionfunc){
+		ajax.asyncPost(api.apiPath+"?"+call, payload, function(request){
+			if(request.status!=200){
+				gui.statusDisplay("Server error "+request.status);
+				return;
+			}
+			
+			try{
+				var data=JSON.parse(request.responseText);
+			}
+			catch(e){
+				gui.statusDisplay("Error parsing response data");
+				return
+			}
+
+			completionfunc(data);
+		}, function(err){
+			gui.statusDisplay("Error: "+err.message);
+		}, "application/json");
+	}
+};
+
 var gui={
 	elem:function(id){
 		return document.getElementById(id);
+	},
+
+	statusDisplay:function(text){
+		gui.elem("status-out").textContent=text;
 	},
 
 	displayInterface:function(iface){
@@ -22,10 +51,9 @@ var gui={
 				break;
 		}
 	}
-}
+};
 
 var pizza={
-	apiPath:"server/db.php",
 	user:{},
 
 	init:function(){
@@ -51,7 +79,11 @@ var pizza={
 			return;
 		}
 		//try to register
+		api.asyncPost("add-user", JSON.stringify({"name":uname}), function(data){
+			window.alert(JSON.stringify(data));
+			
+		});
 		//if taken, err out
 		//else display main
 	}
-}
+};
