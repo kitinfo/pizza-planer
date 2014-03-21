@@ -152,9 +152,17 @@ var pizza={
 		}
 		if(pizza.userinfo.id!=0&&pizza.userinfo.name){
 			//TODO check if credentials match
-			pizza.updateAll();
-			gui.displayInterface("main");
-			gui.statusDisplay("User detected");
+			api.asyncPost("check-user", JSON.stringify(pizza.userinfo), function(data){
+				if(data["check-user"]=="valid"){
+					pizza.updateAll();
+					gui.displayInterface("main");
+					gui.statusDisplay("User detected");
+				}
+				else{
+					pizza.killCookie();
+					gui.statusDisplay("Invalid user detected, resetting");
+				}
+			});
 		}
 	},
 
