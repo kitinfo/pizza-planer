@@ -2,7 +2,7 @@ body{
 	width:100%;
 }
 
-h1,h2{
+h1,h2, h3{
 	padding:0;
 	margin:0;
 }
@@ -25,11 +25,25 @@ a{
 	float:left;
 }
 
+#main-head-buttons{
+	float:right;
+}
+
 .ui-box {
 	clear:both;
 	margin-top:1em;
 	background-color:#eee;
 	padding:1em;
+}
+
+.pizza {
+	background-color:#bbb;
+	padding:1em;
+	margin-top:2em;
+}
+
+.pizza .want-link{
+	float:right;
 }
 
 .button{
