@@ -272,6 +272,7 @@ var pizza={
 				pizza.userinfo.id=data.user;
 				cookies.setCookie("pizza_user", JSON.stringify(pizza.userinfo));
 				gui.displayInterface("main");
+				pizza.updateAll();
 			}
 			else{
 				gui.statusDisplay("Failed to register user");
