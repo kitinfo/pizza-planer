@@ -2,9 +2,13 @@ body{
 	width:100%;
 }
 
-h1,h2, h3{
+h1,h2,h3,ul{
 	padding:0;
 	margin:0;
+}
+
+ul{
+	margin-left:2em;
 }
 
 a{
@@ -25,7 +29,7 @@ a{
 	float:left;
 }
 
-#main-head-buttons{
+#head-buttons{
 	float:right;
 }
 
@@ -44,6 +48,11 @@ a{
 
 .pizza .want-link{
 	float:right;
+}
+
+.pizza .contents{
+	display:block;
+	font-style:italic;
 }
 
 .button{

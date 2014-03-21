@@ -23,7 +23,7 @@
 					Anzeigename: <input type="text" id="user-input" /> <a href="#" onclick="" class="button">Stimmt so</a>
 				</div>
 				<div id="pizza-main" class="ui-box">
-					<div id="main-head-buttons">
+					<div id="head-buttons">
 						<a href="#" onclick="" class="button">Abmelden</a>
 						<a href="#" onclick="" class="button">Neue Pizza</a>
 					</div>
@@ -31,9 +31,8 @@
 					<div class="pizza">
 						<a href="#" onclick="" class="button want-link">Dabei!</a>
 						<h3>Friss oder Stirb</h3>
-						Belag: Kleine Katzen und Vegetarierfleisch<br/>
-						Besonderheiten: Erdbebengefaehrdeter Doppelrahmstufenteig!<br/>
-						Preis (Gesamt/pro Person): 12 Euro/4Euro p. Person<br/>
+						<span class="contents">Kleine Katzen und Vegetarierfleisch auf Oeko-Doppelrahmteig ohne Atomstrom</span>
+						Preis (Gesamt/pro Person/mit dir): 12/4/3.50<br/>
 						Personen: 3/5<br/>
 						Beteiligte:<br/>
 						<ul>
@@ -44,6 +43,32 @@
 					</div>
 				</div>
 				<div id="pizza-new" class="ui-box">
+					<div id="head-buttons">
+						<a href="#" onclick="" class="button">Lass bleiben</a>
+					</div>
+					<h2>Neue Pizza eintragen</h2>
+					<table>
+						<tr>
+							<td>Name der Kreation</td>
+							<td><input type="text" id="new-name"/></td>
+						</tr>
+						<tr>
+							<td>Inhalt und Besonderheiten</td>
+							<td><input type="text" id="new-contents" /></td>
+						</tr>
+						<tr>
+							<td>Gesamtpreis</td>
+							<td><input type="text" name="new-price" /></td>
+						</tr>
+						<tr>
+							<td>Maximale Personenzahl</td>
+							<td><input type="text" name="new-maxpersons"/></td>
+						</tr>
+						<tr>
+							<td></td>
+							<td><a href="#" onclick="" class="button">Passt</a></td>
+						</tr>
+					</table>
 				</div>
 			</div>
 		<div>
