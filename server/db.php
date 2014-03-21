@@ -1,24 +1,19 @@
 <?php
 
 $TABLES = array(
-    "peers" => "id",
-    "categories" => "id",
-    "torrents" => "id"
+    "pizzas" => "id",
+    "users" => "name"
 );
-$VIEWS = array(
-    "torrentcategories" => "id",
-    "newtorrents" => "id"
-);
+$VIEWS = array();
 
 # open db
-$db = new PDO("sqlite:pizza.db3");
-$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_SILENT);
+$controller = new Controller();
         
 $retVal["status"] = "nothing to do";
 
 $tables = array_keys($TABLES);
 foreach ($tables as $table) {
-    $retVal = request($db, $table, $TABLES[$table], $retVal);
+    $retVal = request($controller->getDB(), $table, $TABLES[$table], $retVal);
 }
 
 $viewKeys = array_keys($VIEWS);
@@ -26,40 +21,23 @@ foreach ($viewKeys as $view) {
     $viewData = $_GET[$view];
 
     if (isset($viewData)) {
-	$retVal[$view] = getView($db, $viewData, $view, $TABLES[$view]);
+	$retVal[$view] = getView($controller->getDB(), $viewData, $view, $TABLES[$view]);
     }
 }
 
-$cat = $_GET["cat"];
-$torrents = $_GET["torrents"];
-
-
-$catfor = $_GET["catfor"];
-
-if (isset($catfor) && !empty($catfor)) {
-
-    $retVal["categories"] = getView($db, $catfor, "torrentcategories", "id");
-    $retVal["status"] = array(0);
-}
-
-if (isset($torrents) && isset($cat) && !empty($cat)) {
-    if ($cat == "new") {
-	$retVal["torrents"] = getView($db, "*", "newtorrents", "category");
-    } else {
-	$retVal["torrents"] = getView($db, $cat, "torrentcategories", "category");
-    }
-}
-
-
-
+$http_raw = file_get_contents("php://input");
 
 if (isset($http_raw) && !empty($http_raw)) {
 
     $obj = json_decode($http_raw, true);
 
-    if (isset($_GET["category-add"])) {
-
-	$retVal["status"] = addCatMapping($db, $obj["torrent"], $obj["category"]);
+    if (isset($_GET["adduser"])) {
+        
+        if (isset($obj["name"])) {
+            $retVal["status"] = $controller->addUser($obj["name"]);
+        } else {
+            $retVal["error"] = $obj;
+        }
     }
     if (isset($_GET["category-del"])) {
 	$retVal["status"] = delCatMapping($db, $obj["torrent"], $obj["category"]);
@@ -71,8 +49,8 @@ if (isset($http_raw) && !empty($http_raw)) {
     if (isset($_GET["torrent-rename"])) {
 	$retVal["status"] = renameTorrent($db, $obj["id"], $obj["name"]);
     }
+    
 }
-
 
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
@@ -83,69 +61,6 @@ if (isset($_GET["callback"]) && !empty($_GET["callback"])) {
     echo $callback . "('" . json_encode($retVal, JSON_NUMERIC_CHECK) . "')";
 } else {
     echo json_encode($retVal, JSON_NUMERIC_CHECK);
-}
-
-
-function renameTorrent($db, $id, $name) {
-
-    $query = "UPDATE torrents SET name = :name WHERE id= :id";
-
-    $stm = $db->prepare($query);
-    $stm->execute(array(
-	":id" => $id,
-	":name" => $name
-    ));
-
-    $retVal = $stm->errorInfo();
-
-    $stm->closeCursor();
-    return $retVal;
-}
-
-function delTorrent($db, $torrent) {
-    $query = "DELETE FROM torrents WHERE id = :torrent";
-
-    $stm = $db->prepare($query);
-    $stm->execute(array(
-	":torrent" => $torrent
-    ));
-
-    $retVal = $stm->errorInfo();
-
-    $stm->closeCursor();
-    return $retVal;
-}
-
-function addCatMapping($db, $torrent, $cat) {
-
-    $query = "INSERT INTO categorymap (torrent, category) VALUES(:torrent, :cat)";
-
-    $stm = $db->prepare($query);
-    $stm->execute(array(
-	":torrent" => $torrent,
-	":cat" => $cat
-    ));
-
-    $retVal = $stm->errorInfo();
-
-    $stm->closeCursor();
-    return $retVal;
-}
-
-function delCatMapping($db, $torrent, $cat) {
-
-    $query = "DELETE FROM categorymap WHERE torrent = :torrent AND category = :cat";
-
-    $stm = $db->prepare($query);
-    $stm->execute(array(
-	":torrent" => $torrent,
-	":cat" => $cat
-    ));
-
-    $retVal = $stm->errorInfo();
-
-    $stm->closeCursor();
-    return $retVal;
 }
 
 function getView($db, $data, $tag, $search) {
@@ -206,6 +121,150 @@ function request($db, $tag, $searchTag, $retVal) {
     
 return $retVal;
 }
+
+
+class Output {
+    
+    
+    private static $instance;
+    public $retVal;
+    
+    private function __construct() {
+        $this->$retVal['status'] = array();
+    }
+    
+    
+    public static function getInstance() {
+        if(!self::$instance) { 
+            self::$instance = new self(); 
+        } 
+
+        return self::$instance; 
+    }
+    
+    public function add($table, $output) {
+        $htis->retVal[$table] = $output;
+    }
+    
+    public function addStatus($table, $output) {
+        $this->retVal['status'][$table] = $output;
+    }
+    
+    public function output() {
+        echo json_encode($retVal);
+    }
+}
+
+
+class Controller {
+    
+    public $db; 
+    
+    public function __construct() {
+        
+        try {
+            $this->db = new PDO("sqlite:pizza.db3");
+            $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_SILENT);
+        
+        } catch (Exception $ex) {
+            $retVal["status"] = $ex->getMessage();
+            die(json_encode($retVal));
+        }
+    }
+    
+    public function prepare($sql) {
+        
+        $db = $this->getDB();
+        
+        try {
+            return $db->prepare($sql);
+            
+        } catch (Exception $ex) {
+            $retVal["status"] = $ex->getMessage();
+            die(json_encode($retVal));
+        }
+    }
+    
+    public function execute($stm, $args) {
+        try {
+            $stm->execute($args);
+            return $stm;
+        } catch (Exception $ex) {
+            $retVal["status"] = $ex->getMessage();
+            die(json_encode($retVal));
+        }
+    }
+    
+    public function addUser($name) {
+        
+        $sql = "INSERT INTO users(name) VALUES(:name)";
+        
+        $stm = $this->prepare($sql);
+        
+        $stm = $this->execute($stm, array(
+            ":name" => $name
+        ));
+        
+        $error = $stm->errorInfo();
+        $stm->closeCursor();
+        return $error;
+        
+    }
+    
+    public function getUser($id) {
+        
+        $sql = "SELECT * FROM users WHERE name = :id";
+        
+        $stm = $this->prepare($sql);
+        $stm = $this->execute($stm, array(
+            ":id" => $id
+        ));
+        
+        $output = Output::getInstance();
+        
+        $output->addStatus("users", $stm->errorInfo());
+        $output->add("users", $stm->fetchAll(PDO::FETCH_ASSOC));
+        
+        $stm->closeCursor();
+    }
+    
+    /**
+     * 
+     * @return PDO database
+     */
+    public function getDB() {
+        
+        return $this->db;
+    }
+}
+
+
+class Pizza {
+    
+    function addPizza($name, $maxPersons, $price) {
+        
+        
+    }
+    
+    function changePizza($userid, $to) {
+        
+    }
+    
+    function pay() {
+        
+    }
+    
+    function setReady() {
+        
+    }
+    
+    function buy() {
+        
+    }
+}
+
+
+
 
 
 ?>
