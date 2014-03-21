@@ -107,16 +107,25 @@ function request($db, $tag, $searchTag, $retVal) {
     return $retVal;
 }
 
+/**
+ * output functions
+ */
 class Output {
 
     private static $instance;
     public $retVal;
 
+    /**
+     * constructor
+     */
     private function __construct() {
-        $this->retVal['status'] = array();
         $this->retVal['status']["db"] = "ok";
     }
 
+    /**
+     * Returns the output instance or creates it.
+     * @return Output output instance
+     */
     public static function getInstance() {
         if (!self::$instance) {
             self::$instance = new self();
@@ -125,10 +134,20 @@ class Output {
         return self::$instance;
     }
 
+    /**
+     * Adds data for use to output.
+     * @param type $table
+     * @param type $output
+     */
     public function add($table, $output) {
         $this->retVal[$table] = $output;
     }
 
+    /**
+     * Adds an status for output
+     * @param type $table status table
+     * @param type $output message (use an array with 3 entries ("id", <code>, <message>))
+     */
     public function addStatus($table, $output) {
 
         if ($output[1]) {
@@ -139,6 +158,9 @@ class Output {
         $this->retVal['status'][$table] = $output;
     }
 
+    /**
+     * Generates the output for the browser. General you call this only once.
+     */
     public function write() {
 
         header("Content-Type: application/json");
@@ -154,10 +176,16 @@ class Output {
 
 }
 
+/**
+ * controller functions
+ */
 class Controller {
 
     private $db;
 
+    /**
+     * controller constructor (opens the database)
+     */
     public function __construct() {
 
         try {
@@ -169,6 +197,11 @@ class Controller {
         }
     }
 
+    /**
+     * Checks the secret for admin stuff.
+     * @param type $secret secret
+     * @return boolean true if same as in database.
+     */
     public function checkSecret($secret) {
         $sql = "SELECT * FROM system WHERE key = 'secret'";
 
@@ -184,6 +217,11 @@ class Controller {
         return false;
     }
 
+    /**
+     * Helper function for executing. Builds a prepared statement.
+     * @param type $sql sql command.
+     * @return type prepared statement which you can execute with execute()
+     */
     private function prepare($sql) {
 
         $db = $this->getDB();
@@ -201,6 +239,12 @@ class Controller {
         }
     }
 
+    /**
+     * Helper function for executing the prepared statement.
+     * @param type $stm prepared statement (@see prepare())
+     * @param type $args argumens for the statement
+     * @return type cursor
+     */
     private function execute($stm, $args) {
         try {
             $stm->execute($args);
@@ -211,11 +255,22 @@ class Controller {
         }
     }
 
+    /**
+     * exec an action on the database
+     * @param type $sql sql command
+     * @param type $args arguments for the command
+     * @return type database cursor (don't forget to close after doing ýour stuff)
+     */
     public function exec($sql, $args) {
         $stm = $this->prepare($sql);
         return $this->execute($stm, $args);
     }
 
+    
+    /**
+     * Adds the user to database.
+     * @param type $name name of the user
+     */
     public function addUser($name) {
 
         $sql = "INSERT INTO users(name) VALUES(:name)";
@@ -233,6 +288,10 @@ class Controller {
         $stm->closeCursor();
     }
 
+    /**
+     * Returns the user with the given id
+     * @param type $id id of the user
+     */
     public function getUser($id) {
 
         $sql = "SELECT * FROM users WHERE name = :id";
@@ -251,7 +310,7 @@ class Controller {
     }
 
     /**
-     * 
+     * Returns the database object
      * @return PDO database
      */
     public function getDB() {
@@ -261,8 +320,18 @@ class Controller {
 
 }
 
+/**
+ * functions for user actions
+ */
 class User {
 
+    /**
+     * Switches the user assignment to another pizza
+     * @global type $out
+     * @global Controller $controller
+     * @param type $userid id of the user
+     * @param type $to id of the pizza
+     */
     function changePizza($userid, $to) {
         global $out;
         global $controller;
@@ -280,6 +349,13 @@ class User {
         $stm->closeCursor();
     }
 
+    /**
+     * mark the user as had paid.
+     * @global type $out
+     * @global Controller $controller
+     * @param type $id id of the user
+     * @param type $bool true if the user had paid.
+     */
     function pay($id, $bool) {
         global $out, $controller;
 
@@ -296,6 +372,13 @@ class User {
         $stm->closeCursor();
     }
 
+    /**
+     * Sets the ready flag for the user and checks then if the pizza is ready for lock.
+     * @global Controller $controller
+     * @global type $out
+     * @param type $id id of the user
+     * @param type $bool true if ready
+     */
     function setReady($id, $bool) {
         global $controller, $out;
 
@@ -317,8 +400,17 @@ class User {
 
 }
 
+/**
+ * functions for pizza actions
+ */
 class Pizza {
 
+    /**
+     * buys a pizza if the pizza is locked or ready for lock.
+     * @global type $out
+     * @global Controller $controller
+     * @param type $id id of the pizza
+     */
     public function buyPizza($id) {
         global $out, $controller;
 
@@ -340,6 +432,15 @@ class Pizza {
         $out->addStatus("buy-pizza", array("99999", 99, "Pizza is not ready for buy"));
     }
 
+    /**
+     * Adds a pizza to database.
+     * @global Controller $controller
+     * @global type $out
+     * @param type $name name of the pizza.
+     * @param type $maxPersons how many persons can assign.
+     * @param type $price the price of the pizza (with tip).
+     * @param type $content Additional content like topping.
+     */
     function addPizza($name, $maxPersons, $price, $content) {
 
         global $controller, $out;
@@ -358,6 +459,10 @@ class Pizza {
         $out->add("pizza", $controller->getDB()->lastInsertId());
     }
 
+    /**
+     * Get all pizzas and the users that are assigned.
+     * @global type $out
+     */
     function getPizzaUsers() {
 
         global $out;
@@ -371,7 +476,7 @@ class Pizza {
                 "users" => $this->getPizzaUsersByID($pizza["id"]),
                 "id" => $pizza["id"],
                 "lock" => $pizza["lock"],
-                "bought"  => $pizza["bought"],
+                "bought" => $pizza["bought"],
                 "maxpersons" => $pizza["maxpersons"]
             );
         }
@@ -379,6 +484,12 @@ class Pizza {
         $out->add("pizzausers", $result);
     }
 
+    /**
+     * Get all pizzas in database.
+     * @global type $out
+     * @global Controller $controller
+     * @return type
+     */
     function getPizzas() {
         global $out, $controller;
 
@@ -392,6 +503,12 @@ class Pizza {
         return $pizzas;
     }
 
+    /**
+     * Returns all users that wants this pizza.
+     * @global Controller $controller
+     * @param type $id id of the pizza
+     * @return type
+     */
     function getPizzaUsersByID($id) {
         global $controller;
 
@@ -407,6 +524,13 @@ class Pizza {
         return $users;
     }
 
+    /**
+     * Check if the pizza is ready for lock.
+     * @global Controller $controller
+     * @global type $out
+     * @param type $pizzaID id of the pizza
+     * @return boolean true if ready for lock or is locked
+     */
     function checkPizzaForLock($pizzaID) {
         global $controller, $out;
 
@@ -436,6 +560,11 @@ class Pizza {
         return false;
     }
 
+    /**
+     * Checks if the pizza assgined to the userid ist ready for lock.
+     * If yes, lock the pizza.
+     * @param type $userid
+     */
     function checkPizzaLock($userid) {
         $pizzaID = $this->getPizzaFromUserID($userid);
 
@@ -444,6 +573,13 @@ class Pizza {
         }
     }
 
+    /**
+     * Locks a pizza
+     * @global type $out
+     * @global Controller $controller
+     * @param type $id id of the pizza
+     * @param type $bool lock or not
+     */
     function lockPizza($id, $bool) {
         global $out, $controller;
 
@@ -460,6 +596,12 @@ class Pizza {
         $stm->closeCursor();
     }
 
+    /**
+     * Returns how many persons can assign to the given pizza.
+     * @global Controller $controller
+     * @param type $id id of the pizza
+     * @return int
+     */
     function getMaxPerson($id) {
         global $controller;
 
@@ -476,6 +618,12 @@ class Pizza {
         }
     }
 
+    /**
+     * Returnshow many persons want this pizza
+     * @global Controller $controller
+     * @param type $pizzaID id of the pizza
+     * @return int
+     */
     function getPersonsByPizza($pizzaID) {
         global $controller;
 
@@ -492,6 +640,12 @@ class Pizza {
         return 0;
     }
 
+    /**
+     * Returns the pizza id from an user.
+     * @global Controller $controller
+     * @param Integer $id id of the user
+     * @return int
+     */
     function getPizzaFromUserID($id) {
         global $controller;
 
