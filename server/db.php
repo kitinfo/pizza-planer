@@ -8,8 +8,8 @@ $TABLES = array(
 # open db
 $controller = new Controller();
 $out = Output::getInstance();
-$pizza = new Pizza($controller);
-$user = new User($controller, $pizza);
+$pizza = new Pizza();
+$user = new User();
 
 $tables = array_keys($TABLES);
 foreach ($tables as $table) {
@@ -99,7 +99,7 @@ function request($db, $tag, $searchTag, $retVal) {
             $out->add($tag, $STMT->fetchAll(PDO::FETCH_ASSOC));
             $out->addStatus($tag, $STMT->errorInfo());
         } else {
-            $out->addStatus($tag, array("99998", 90,"Failed to create statement"));
+            $out->addStatus($tag, array("99998", 90, "Failed to create statement"));
         }
         $STMT->closeCursor();
     }
@@ -180,7 +180,7 @@ class Controller {
             Output::getInstance()->addStatus("access", array("0", null, "granted"));
             return true;
         }
-        Output::getInstance()->addStatus("access", array("99997", 97,"denied"));
+        Output::getInstance()->addStatus("access", array("99997", 97, "denied"));
         return false;
     }
 
@@ -263,64 +263,52 @@ class Controller {
 
 class User {
 
-    private $controller;
-    private $pizza;
-
-    public function __construct($controller, $pizza) {
-        $this->controller = $controller;
-        $this->pizza = $pizza;
-    }
-
     function changePizza($userid, $to) {
-        $out = Output::getInstance();
+        global $out;
+        global $controller;
 
         $sql = "UPDATE users SET pizza = :pizza WHERE id = :id";
 
-        $con = $this->controller;
-
-        $stm = $con->exec($sql, array(
+        $stm = $controller->exec($sql, array(
             ":pizza" => $to,
             ":id" => $userid
         ));
 
         $out->addStatus("change-pizza", $stm->errorInfo());
-        $out->add("change-pizza", $con->getDB()->lastInsertId());
+        $out->add("change-pizza", $controller->getDB()->lastInsertId());
 
         $stm->closeCursor();
     }
 
     function pay($id, $bool) {
-        $out = Output::getInstance();
+        global $out, $controller;
 
         $sql = "UPDATE users SET paid = :bool WHERE id = :id";
 
-        $con = $this->controller;
-
-        $stm = $con->exec($sql, array(
+        $stm = $controller->exec($sql, array(
             ":id" => $id,
             ":bool" => $bool
         ));
 
         $out->addStatus("pay", $stm->errorInfo());
-        $out->add("pay", $con->getDB()->lastInsertId());
+        $out->add("pay", $controller->getDB()->lastInsertId());
 
         $stm->closeCursor();
     }
 
     function setReady($id, $bool) {
+        global $controller, $out;
+
+
         $sql = "UPDATE users SET ready = :bool WHERE id = :id";
 
-        $con = $this->controller;
-
-        $stm = $con->exec($sql, array(
+        $stm = $controller->exec($sql, array(
             ":id" => $id,
             ":bool" => $bool
         ));
 
-        $out = Output::getInstance();
-
         $out->addStatus("set-ready", $stm->errorInfo());
-        $out->add("set-ready", $con->getDB()->lastInsertId());
+        $out->add("set-ready", $controller->getDB()->lastInsertId());
 
         $stm->closeCursor();
 
@@ -331,52 +319,48 @@ class User {
 
 class Pizza {
 
-    private $controller;
-
-    public function __construct($controller) {
-        $this->controller = $controller;
-    }
-
     public function buyPizza($id) {
-        $out = Output::getInstance();
+        global $out, $controller;
+
         if ($this->checkPizzaForLock($id)) {
 
             $sql = "UPDATE pizzas SET bought = 1 WHERE id = :id";
 
-            $stm = $this->controller->exec($sql, array(
+            $stm = $controller->exec($sql, array(
                 ":id" => $id
             ));
 
             $out->addStatus("buy-pizza", $stm->errorInfo());
-            $out->add("buy-pizza", $this->controller->getDB()->lastInsertId());
+            $out->add("buy-pizza", $controller->getDB()->lastInsertId());
 
             $stm->closeCursor();
             return;
         }
 
-        $out->addStatus("buy-pizza", array("99999", 20, "Pizza is not ready for buy"));
+        $out->addStatus("buy-pizza", array("99999", 99, "Pizza is not ready for buy"));
     }
 
-    function addPizza($name, $maxPerson, $price, $content) {
+    function addPizza($name, $maxPersons, $price, $content) {
+
+        global $controller, $out;
 
         $sql = "INSERT INTO pizzas(name, maxpersons, price, content) VALUES(:name, :maxpersons, :price, :content)";
 
-        $con = $this->controller;
 
-        $stm = $con->exec($sql, array(
+        $stm = $controller->exec($sql, array(
             ":name" => $name,
-            ":maxpersons" => $maxPerson,
+            ":maxpersons" => $maxPersons,
             ":price" => $price,
             ":content" => $content
         ));
 
-        $out = Output::getInstance();
-
         $out->addStatus("addpizza", $stm->errorInfo());
-        $out->add("pizza", $con->getDB()->lastInsertId());
+        $out->add("pizza", $controller->getDB()->lastInsertId());
     }
 
     function getPizzaUsers() {
+
+        global $out;
 
         $result = array();
 
@@ -390,15 +374,15 @@ class Pizza {
             );
         }
 
-        Output::getInstance()->add("pizzausers", $result);
+        $out->add("pizzausers", $result);
     }
 
     function getPizzas() {
-        $con = $this->controller;
+        global $out, $controller;
 
         $sql = "SELECT * FROM pizzas";
 
-        $stm = $con->exec($sql, array());
+        $stm = $controller->exec($sql, array());
 
         $pizzas = $stm->fetchAll(PDO::FETCH_ASSOC);
         $stm->closeCursor();
@@ -407,11 +391,11 @@ class Pizza {
     }
 
     function getPizzaUsersByID($id) {
-        $con = $this->controller;
+        global $controller;
 
         $sql = "SELECT name FROM users WHERE pizza = :id";
 
-        $stm = $con->exec($sql, array(
+        $stm = $controller->exec($sql, array(
             ":id" => $id
         ));
         $users = $stm->fetchAll(PDO::FETCH_ASSOC);
@@ -420,15 +404,15 @@ class Pizza {
 
         return $users;
     }
-    
+
     function checkPizzaForLock($pizzaID) {
-        $con = $this->controller;
-        $out = Output::getInstance();
+        global $controller, $out;
+
         $out->add("pizzaID", $pizzaID);
-        
+
         $sql = "SELECT * FROM users WHERE NOT ready AND pizza = :pizza";
-        
-        $stm = $con->exec($sql, array(
+
+        $stm = $controller->exec($sql, array(
             ":pizza" => $pizzaID
         ));
         $notReadyUser = $stm->fetchAll(PDO::FETCH_ASSOC);
@@ -442,7 +426,7 @@ class Pizza {
 
         if ($maxPerson == $currentPersons) {
             $out->addStatus("pizzalock", array("0", null, "ready"));
-            
+
             return true;
         }
 
@@ -459,29 +443,27 @@ class Pizza {
     }
 
     function lockPizza($id, $bool) {
+        global $out, $controller;
+
         $sql = "UPDATE pizzas SET lock = :bool WHERE id = :id";
 
-        $con = $this->controller;
-
-        $stm = $con->exec($sql, array(
+        $stm = $controller->exec($sql, array(
             ":id" => $id,
             ":bool" => $bool
         ));
 
-        $out = Output::getInstance();
-
         $out->addStatus("lock-pizza", $stm->errorInfo());
-        $out->add("lock-pizza", $con->getDB()->lastInsertId());
+        $out->add("lock-pizza", $controller->getDB()->lastInsertId());
 
         $stm->closeCursor();
     }
 
     function getMaxPerson($id) {
-        $con = $this->controller;
+        global $controller;
 
         $sql = "SELECT maxpersons FROM pizzas WHERE id = :id";
 
-        $stm = $con->exec($sql, array(
+        $stm = $controller->exec($sql, array(
             ":id" => $id
         ));
         $pizzas = $stm->fetch();
@@ -493,11 +475,11 @@ class Pizza {
     }
 
     function getPersonsByPizza($pizzaID) {
-        $con = $this->controller;
+        global $controller;
 
         $sql = "SELECT * FROM users WHERE pizza = :id";
 
-        $stm = $con->exec($sql, array(
+        $stm = $controller->exec($sql, array(
             ":id" => $pizzaID
         ));
         $pizzas = $stm->fetchAll(PDO::FETCH_ASSOC);
@@ -509,23 +491,19 @@ class Pizza {
     }
 
     function getPizzaFromUserID($id) {
-        $con = $this->controller;
+        global $controller;
 
         $sql = "SELECT pizza FROM users WHERE id = :id";
 
-        $stm = $con->exec($sql, array(
+        $stm = $controller->exec($sql, array(
             ":id" => $id
         ));
-        $pizzas = $stm->fetch(); //$stm->fetchAll(PDO::FETCH_ASSOC);
+        $pizzas = $stm->fetch();
         if (count($pizzas) > 0) {
             return $pizzas[0];
         } else {
             return 0;
         }
-    }
-
-    function buy() {
-        
     }
 
 }
