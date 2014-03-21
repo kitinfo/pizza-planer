@@ -116,6 +116,11 @@ class Output {
     }
 
     public function addStatus($table, $output) {
+        
+        if ($output[1] != NULL) {
+            $this->retVal["status"]["db"] = "failed";
+        }
+        
         $this->retVal['status'][$table] = $output;
     }
 
@@ -143,8 +148,8 @@ class Controller {
         try {
             $this->db = new PDO("sqlite:pizza.db3");
             $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_SILENT);
-        } catch (Exception $ex) {
-            $retVal["status"] = $ex->getMessage();
+        } catch (PDOException $ex) {
+            $retVal["status"]["db"] = $ex->getMessage();
             die(json_encode($retVal));
         }
     }
@@ -156,13 +161,13 @@ class Controller {
         try {
             $stm = $db->prepare($sql);
             if ($db->errorCode() != 0) {
-                $retVal["status"] = $db->errorInfo();
+                $retVal["status"]["db"] = $db->errorInfo();
                 die(json_encode($retVal));
             }
             return $stm;
             
         } catch (Exception $ex) {
-            $retVal["status"] = $ex->getMessage();
+            $retVal["status"]["db"] = $ex->getMessage();
             die(json_encode($retVal));
         }
     }
@@ -172,7 +177,7 @@ class Controller {
             $stm->execute($args);
             return $stm;
         } catch (Exception $ex) {
-            $retVal["status"] = $ex->getMessage();
+            $retVal["status"]["db"] = $ex->getMessage();
             die(json_encode($retVal));
         }
     }
