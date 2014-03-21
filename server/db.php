@@ -370,6 +370,8 @@ class Pizza {
             $result[] = array(
                 "users" => $this->getPizzaUsersByID($pizza["id"]),
                 "id" => $pizza["id"],
+                "lock" => $pizza["lock"],
+                "bought"  => $pizza["bought"],
                 "maxpersons" => $pizza["maxpersons"]
             );
         }
@@ -393,7 +395,7 @@ class Pizza {
     function getPizzaUsersByID($id) {
         global $controller;
 
-        $sql = "SELECT name FROM users WHERE pizza = :id";
+        $sql = "SELECT name, ready FROM users WHERE pizza = :id";
 
         $stm = $controller->exec($sql, array(
             ":id" => $id
