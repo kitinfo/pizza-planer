@@ -317,7 +317,7 @@ class Pizza {
         $pizzas = $this->getPizzas();
 
         foreach ($pizzas as $pizza) {
-            $result[$pizza["id"]] = array(
+            $result[] = array(
                 "users" => $this->getPizzaUsersByID($pizza["id"]),
                 "id" => $pizza["id"],
                 "maxpersons" => $pizza["maxpersons"]
