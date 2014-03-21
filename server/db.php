@@ -9,13 +9,12 @@ $TABLES = array(
 $controller = new Controller();
 $out = Output::getInstance();
 
-$retVal["status"] = "nothing to do";
-
 $tables = array_keys($TABLES);
 foreach ($tables as $table) {
     request($controller->getDB(), $table, $TABLES[$table], $retVal);
 }
 $pizza = new Pizza($controller);
+$user = new User($controller);
 if (isset($_GET["pizza-users"])) {
     if (!empty($_GET["pizza-users"])) {
         $pizza->getPizzaUsersByID($_GET["pizza-users"]);
@@ -45,15 +44,14 @@ if (isset($http_raw) && !empty($http_raw)) {
     if (isset($_GET["set-ready"])) {
         $pizza->setReady($obj["id"], $obj["bool"]);
     }
-
-    if (isset($_GET["torrent-rename"])) {
-        $retVal["status"] = renameTorrent($db, $obj["id"], $obj["name"]);
+    if (isset($_GET["change-pizza"])) {
+        $user->changePizza($obj["id"], $obj["to"]);
+    }
+    if (isset($_GET["pay"])) {
+        $user->pay($obj["id"], $obj["bool"]);
     }
 }
 
-
-
-$out->add("old", $retVal);
 $out->write();
 
 function getTables($db) {
@@ -239,6 +237,52 @@ class Controller {
 
 }
 
+class User {
+
+    private $controller;
+
+    public function __construct($controller) {
+        $this->controller = $controller;
+    }
+    
+    function changePizza($userid, $to) {
+        $out = Output::getInstance();
+        
+        $sql = "UPDATE users SET pizza = :pizza WHERE id = :id";
+
+        $con = $this->controller;
+
+        $stm = $con->exec($sql, array(
+            ":pizza" => $to,
+            ":id" => $userid
+        ));
+        
+        $out->addStatus("change-pizza", $stm->errorInfo());
+        $out->add("change-pizza", $con->getDB()->lastInsertId());
+
+        $stm->closeCursor();
+    }
+
+    function pay($id, $bool) {
+        $out = Output::getInstance();
+        
+        $sql = "UPDATE users SET paid = :bool WHERE id = :id";
+
+        $con = $this->controller;
+
+        $stm = $con->exec($sql, array(
+            ":id" => $id,
+            ":bool" => $bool
+        ));
+        
+        $out->addStatus("pay", $stm->errorInfo());
+        $out->add("pay", $con->getDB()->lastInsertId());
+
+        $stm->closeCursor();
+    }
+
+}
+
 class Pizza {
 
     private $controller;
@@ -265,37 +309,37 @@ class Pizza {
         $out->addStatus("addpizza", $stm->errorInfo());
         $out->add("pizza", $con->getDB()->lastInsertId());
     }
-    
+
     function getPizzaUsers() {
-        
+
         $result = array();
-        
+
         $pizzas = $this->getPizzas();
-        
-        foreach($pizzas as $pizza) {
+
+        foreach ($pizzas as $pizza) {
             $result[$pizza["id"]] = array(
                 "users" => $this->getPizzaUsersByID($pizza["id"]),
                 "id" => $pizza["id"],
                 "maxpersons" => $pizza["maxpersons"]
             );
         }
-        
+
         Output::getInstance()->add("pizzausers", $result);
     }
-    
+
     function getPizzas() {
         $con = $this->controller;
-        
+
         $sql = "SELECT * FROM pizzas";
-        
+
         $stm = $con->exec($sql, array());
-        
+
         $pizzas = $stm->fetchAll(PDO::FETCH_ASSOC);
         $stm->closeCursor();
-        
+
         return $pizzas;
     }
-    
+
     function getPizzaUsersByID($id) {
         $con = $this->controller;
 
@@ -305,20 +349,10 @@ class Pizza {
             ":id" => $id
         ));
         $users = $stm->fetchAll(PDO::FETCH_ASSOC);
-        
+
         $stm->closeCursor();
-        
+
         return $users;
-        
-    }
-    
-
-    function changePizza($userid, $to) {
-        
-    }
-
-    function pay() {
-        
     }
 
     function setReady($id, $bool) {
@@ -368,10 +402,10 @@ class Pizza {
             $this->lockPizza($pizzaID, true);
             return;
         }
-        
+
         $out->addStatus("pizzalock", "notReady");
     }
-    
+
     function lockPizza($id, $bool) {
         $sql = "UPDATE pizzas SET lock = :bool WHERE id = :id";
 
@@ -415,7 +449,7 @@ class Pizza {
             ":id" => $pizzaID
         ));
         $pizzas = $stm->fetchAll(PDO::FETCH_ASSOC);
-        
+
         if ($pizzas) {
             return count($pizzas);
         }
