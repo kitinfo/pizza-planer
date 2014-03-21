@@ -4,7 +4,6 @@ $TABLES = array(
     "pizzas" => "id",
     "users" => "name"
 );
-$VIEWS = array();
 
 # open db
 $controller = new Controller();
@@ -15,15 +14,6 @@ $retVal["status"] = "nothing to do";
 $tables = array_keys($TABLES);
 foreach ($tables as $table) {
     request($controller->getDB(), $table, $TABLES[$table], $retVal);
-}
-
-$viewKeys = array_keys($VIEWS);
-foreach ($viewKeys as $view) {
-    $viewData = $_GET[$view];
-
-    if (isset($viewData)) {
-        $retVal[$view] = getView($controller->getDB(), $viewData, $view, $TABLES[$view]);
-    }
 }
 
 $http_raw = file_get_contents("php://input");
@@ -44,8 +34,8 @@ if (isset($http_raw) && !empty($http_raw)) {
     if (isset($_GET["add-pizza"])) {
         $pizza->addPizza($obj["name"], $obj["maxperson"], $obj["price"], $obj["content"]);
     }
-    if (isset($_GET["torrent-del"])) {
-        $retVal["status"] = delTorrent($db, $obj["id"]);
+    if (isset($_GET["set-ready"])) {
+        $pizza->setReady($obj["id"], $obj["bool"]);
     }
 
     if (isset($_GET["torrent-rename"])) {
@@ -53,30 +43,10 @@ if (isset($http_raw) && !empty($http_raw)) {
     }
 }
 
-header("Content-Type: application/json");
-header("Access-Control-Allow-Origin: *");
-# Rückmeldung senden
+
 
 $out->add("old", $retVal);
 $out->write();
-
-
-function getView($db, $data, $tag, $search) {
-
-    if (empty($data) || $data == "*") {
-        $stm = $db->prepare("SELECT * FROM [" . $tag . "]");
-        $stm->execute();
-    } else {
-        $stm = $db->prepare("SELECT * FROM [" . $tag . "] WHERE " . $search . " = :data");
-        $stm->execute(array(
-            ':data' => $data
-        ));
-    }
-    $retVal = $stm->fetchAll(PDO::FETCH_ASSOC);
-    $stm->closeCursor();
-
-    return $retVal;
-}
 
 function getTables($db) {
 
@@ -130,7 +100,7 @@ class Output {
 
     private function __construct() {
         $this->retVal['status'] = array();
-        $this->retVal['status']["status"] = "ok";
+        $this->retVal['status']["db"] = "ok";
     }
 
     public static function getInstance() {
@@ -150,6 +120,10 @@ class Output {
     }
 
     public function write() {
+        
+        header("Content-Type: application/json");
+        header("Access-Control-Allow-Origin: *");
+        # Rückmeldung senden
         if (isset($_GET["callback"]) && !empty($_GET["callback"])) {
             $callback = $_GET["callback"];
             echo $callback . "('" . json_encode($this->retVal, JSON_NUMERIC_CHECK) . "')";
@@ -180,7 +154,13 @@ class Controller {
         $db = $this->getDB();
 
         try {
-            return $db->prepare($sql);
+            $stm = $db->prepare($sql);
+            if ($db->errorCode() != 0) {
+                $retVal["status"] = $db->errorInfo();
+                die(json_encode($retVal));
+            }
+            return $stm;
+            
         } catch (Exception $ex) {
             $retVal["status"] = $ex->getMessage();
             die(json_encode($retVal));
@@ -282,8 +262,20 @@ class Pizza {
         
     }
 
-    function setReady() {
+    function setReady($id, $bool) {
+        $sql = "UPDATE users SET ready = :bool WHERE id = :id";
         
+        $con = $this->controller;
+        
+        $stm = $con->exec($sql, array(
+           ":id" => $id,
+            ":bool" => $bool
+        ));
+        
+        $out = Output::getInstance();
+
+        $out->addStatus("set-ready", $stm->errorInfo());
+        $out->add("set-ready", $con->getDB()->lastInsertId());
     }
 
     function buy() {
