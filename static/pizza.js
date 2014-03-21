@@ -100,27 +100,32 @@ var gui={
 	createPizzaNode:function(nodePizza){
 		var wrapper=gui.build("div", "pizza");
 		wrapper.setAttribute("data-id", nodePizza.id);
-		var wantLink=gui.build("a", "button want-link", "Dabei!");
+		var wantLink=gui.build("span", "button want-link", "Dabei!");
 		wantLink.onclick=pizza.changeParticipation;
 		wantLink.href="#";
 
 		wrapper.appendChild(wantLink);
-		wrapper.appendChild(gui.build("h3", undefined, nodePizza.name));
+		wrapper.appendChild(gui.build("h3", (nodePizza.bought==1)?"strike":undefined, nodePizza.name, (nodePizza.lock==1&&nodePizza.bought!=1)?gui.build("em",undefined," (Locked)"):undefined));
 		wrapper.appendChild(gui.build("span", "contents", nodePizza.content));
 		wrapper.appendChild(gui.build("div", "persons", "Anzahl Personen: "+nodePizza.maxpersons));
 		wrapper.appendChild(gui.build("div", "price", "Preis (Gesamt/pro Person): "+nodePizza.price+"/"+(nodePizza.price/nodePizza.maxpersons)));
 		wrapper.appendChild(gui.build("div", "people"));
 
 		if(pizza.admin){
-			var deleteLink=gui.build("a", "button", "Delete");
+			var deleteLink=gui.build("span", "button", "Delete");
 			deleteLink.onclick=pizza.deletePizza;
 			deleteLink.href="#";
 			wrapper.appendChild(deleteLink);
 		
-			var buyLink=gui.build("a", "button", "Mark bought");
+			var buyLink=gui.build("span", "button", "Mark bought");
 			buyLink.onclick=pizza.buyPizza;
 			buyLink.href="#";
 			wrapper.appendChild(buyLink);
+			
+			var unlockLink=gui.build("span", "button", nodePizza.lock==1?"Unlock":"Lock");
+			unlockLink.onclick=pizza.togglePizzaLock;
+			unlockLink.href="#";
+			wrapper.appendChild(unlockLink);
 		}
 		return wrapper;
 	}
@@ -160,13 +165,19 @@ var pizza={
 	},
 
 	deletePizza:function(event){
+		var pizzaId=event.target.parentNode.getAttribute("data-id");
+		//TODO
+	},
+
+	togglePizzaLock:function(event){
+		var pizzaId=event.target.parentNode.getAttribute("data-id");
 		//TODO
 	},
 
 	buyPizza:function(event){
 		var pizzaId=event.target.parentNode.getAttribute("data-id");
 		api.asyncPost("buy-pizza", JSON.stringify({"id":pizzaId,"secret":pizza.admin}), function(data){
-			if(data.status.db=="ok"&&data.status.access=="granted"){
+			if(data.status.db=="ok"&&data.status.access[2]=="granted"){
 				gui.statusDisplay("Pizza marked as bought.");
 			}
 			else if(data.status.access=="denied"){
@@ -257,8 +268,9 @@ var pizza={
 							var persons=pizzanodes[c].getElementsByClassName("persons")[0];
 							var people=pizzanodes[c].getElementsByClassName("people")[0];
 							var participate=pizzanodes[c].getElementsByClassName("want-link")[0];
+							participate.textContent="Dabei!";
 
-							if(data.pizzausers[i].users.length<data.pizzausers[i].maxpersons){
+							if(data.pizzausers[i].users.length<data.pizzausers[i].maxpersons&&data.pizzausers[i].lock!=1){
 								participate.style.display="inline-block";
 							}
 							else{
@@ -273,7 +285,15 @@ var pizza={
 								people.innerText="Beteiligte:";
 								var list=gui.build("ul");
 								for(var d=0;d<data.pizzausers[i].users.length;d++){
-									list.appendChild(gui.build("li",undefined,data.pizzausers[i].users[d].name));
+									list.appendChild(gui.build("li",undefined,data.pizzausers[i].users[d].name+(data.pizzausers[i].users[d].ready==1?" (Ready)":"")));
+									if(data.pizzausers[i].users[d].name==pizza.userinfo.name){
+										if(data.pizzausers[i].lock!=1){
+											participate.textContent="Toggle Ready";
+										}
+										else{
+											participate.style.display="none";
+										}
+									}
 								}
 								people.appendChild(list);
 							}

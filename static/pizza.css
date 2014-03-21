@@ -76,10 +76,16 @@ a{
 	display:inline-block;
 	border-radius:0.4em;
 	border:1px solid #ddd;
+	cursor:pointer;
+	color:#2222ff;
 }
 
 .button:hover{
 	background-color:#bbb;
+}
+
+.strike{
+	text-decoration:line-through;
 }
 
 .icebreaker {
