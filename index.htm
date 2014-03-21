@@ -8,22 +8,25 @@
 		<link rel="stylesheet" type="text/css" href="static/pizza.css" />
 		<meta name="description" content="Pizzaplanung in Zeiten des papierlosen Bueros." />
 		<meta name="robots" content="noindex,nofollow" />
+		<script type="text/javascript" src="static/ajax.js"></script>
+		<script type="text/javascript" src="static/cookies.js"></script>
+		<script type="text/javascript" src="static/pizza.js"></script>
 	</head>
-	<body>
+	<body onload="pizza.init();">
 		<div id="center-wrap">
 			<div id="center-box">
 				<div id="head-banner">
-					<img src="static/pizza.svg" style="height:4em" />
+					<img src="static/pizza.svg" alt="Pizza" style="height:4em" />
 					<h1>Pizzaplan</h1>
 					<h2>Go stuff yourself!</h2>
 					<div class="icebreaker"></div>
 				</div>
 				<div id="user-login" class="ui-box">
-					Bevor du Pizzamagie betreiben kannst, musst du dich anmelden!</br>
+					Bevor du Pizzamagie betreiben kannst, musst du dich anmelden!<br/>
 					Anzeigename: <input type="text" id="user-input" /> <a href="#" onclick="" class="button">Stimmt so</a>
 				</div>
 				<div id="pizza-main" class="ui-box">
-					<div id="head-buttons">
+					<div class="head-buttons">
 						<a href="#" onclick="" class="button">Abmelden</a>
 						<a href="#" onclick="" class="button">Neue Pizza</a>
 					</div>
@@ -43,7 +46,7 @@
 					</div>
 				</div>
 				<div id="pizza-new" class="ui-box">
-					<div id="head-buttons">
+					<div class="head-buttons">
 						<a href="#" onclick="" class="button">Lass bleiben</a>
 					</div>
 					<h2>Neue Pizza eintragen</h2>
@@ -71,6 +74,6 @@
 					</table>
 				</div>
 			</div>
-		<div>
+		</div>
 	</body>
 </html>
