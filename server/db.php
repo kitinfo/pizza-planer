@@ -15,9 +15,17 @@ $tables = array_keys($TABLES);
 foreach ($tables as $table) {
     request($controller->getDB(), $table, $TABLES[$table], $retVal);
 }
+$pizza = new Pizza($controller);
+if (isset($_GET["pizzausers"])) {
+    if (!empty($_GET["pizzausers"])) {
+        $pizza->getPizzaUsersByID($id);
+    } else {
+        $pizza->getPizzaUsers();
+    }
+}
 
 $http_raw = file_get_contents("php://input");
-$pizza = new Pizza($controller);
+
 
 if (isset($http_raw) && !empty($http_raw)) {
 
@@ -32,7 +40,7 @@ if (isset($http_raw) && !empty($http_raw)) {
         }
     }
     if (isset($_GET["add-pizza"])) {
-        $pizza->addPizza($obj["name"], $obj["maxperson"], $obj["price"], $obj["content"]);
+        $pizza->addPizza($obj["name"], $obj["maxpersons"], $obj["price"], $obj["content"]);
     }
     if (isset($_GET["set-ready"])) {
         $pizza->setReady($obj["id"], $obj["bool"]);
@@ -241,13 +249,13 @@ class Pizza {
 
     function addPizza($name, $maxPerson, $price, $content) {
 
-        $sql = "INSERT INTO pizzas(name, maxperson, price, content) VALUES(:name, :maxperson, :price, :content)";
+        $sql = "INSERT INTO pizzas(name, maxpersons, price, content) VALUES(:name, :maxpersons, :price, :content)";
 
         $con = $this->controller;
 
         $stm = $con->exec($sql, array(
             ":name" => $name,
-            ":maxperson" => $maxPerson,
+            ":maxpersons" => $maxPerson,
             ":price" => $price,
             ":content" => $content
         ));
@@ -257,6 +265,53 @@ class Pizza {
         $out->addStatus("addpizza", $stm->errorInfo());
         $out->add("pizza", $con->getDB()->lastInsertId());
     }
+    
+    function getPizzaUsers() {
+        
+        $result = array();
+        
+        $pizzas = $this->getPizzas();
+        
+        foreach($pizzas as $pizza) {
+            $result[$pizza["id"]] = array(
+                "users" => $this->getPizzaUsersByID($pizza["id"]),
+                "id" => $pizza["id"],
+                "maxpersons" => $pizza["maxpersons"]
+            );
+        }
+        
+        Output::getInstance()->add("pizzaUser", $result);
+    }
+    
+    function getPizzas() {
+        $con = $this->controller;
+        
+        $sql = "SELECT * FROM pizzas";
+        
+        $stm = $con->exec($sql, array());
+        
+        $pizzas = $stm->fetchAll(PDO::FETCH_ASSOC);
+        $stm->closeCursor();
+        
+        return $pizzas;
+    }
+    
+    function getPizzaUsersByID($id) {
+        $con = $this->controller;
+
+        $sql = "SELECT name FROM users WHERE pizza = :id";
+
+        $stm = $con->exec($sql, array(
+            ":id" => $id
+        ));
+        $users = $stm->fetchAll(PDO::FETCH_ASSOC);
+        
+        $stm->closeCursor();
+        
+        return $users;
+        
+    }
+    
 
     function changePizza($userid, $to) {
         
@@ -338,7 +393,7 @@ class Pizza {
     function getMaxPerson($id) {
         $con = $this->controller;
 
-        $sql = "SELECT maxperson FROM pizzas WHERE id = :id";
+        $sql = "SELECT maxpersons FROM pizzas WHERE id = :id";
 
         $stm = $con->exec($sql, array(
             ":id" => $id
