@@ -99,7 +99,7 @@ function request($db, $tag, $searchTag, $retVal) {
             $out->add($tag, $STMT->fetchAll(PDO::FETCH_ASSOC));
             $out->addStatus($tag, $STMT->errorInfo());
         } else {
-            $out->addStatus($tag, "Failed to create statement");
+            $out->addStatus($tag, array("99998", 90,"Failed to create statement"));
         }
         $STMT->closeCursor();
     }
@@ -131,7 +131,8 @@ class Output {
 
     public function addStatus($table, $output) {
 
-        if ($output[1] != NULL) {
+        if ($output[1]) {
+            $this->retVal["status"]["debug"][] = $output;
             $this->retVal["status"]["db"] = "failed";
         }
 
@@ -176,10 +177,10 @@ class Controller {
         $secretTable = $stm->fetch();
         $stm->closeCursor();
         if ($secretTable["value"] == $secret) {
-            Output::getInstance()->addStatus("access", "granted");
+            Output::getInstance()->addStatus("access", array("0", null, "granted"));
             return true;
         }
-        Output::getInstance()->addStatus("access", "denied");
+        Output::getInstance()->addStatus("access", array("99997", 97,"denied"));
         return false;
     }
 
@@ -431,10 +432,8 @@ class Pizza {
             ":pizza" => $pizzaID
         ));
         $notReadyUser = $stm->fetchAll(PDO::FETCH_ASSOC);
-        $out->addStatus("notReadyUser", $notReadyUser);
-        $out->addStatus("notReadyUserQuery", $stm->errorInfo());
         if ($notReadyUser) {
-            $out->addStatus("pizzalock", "notReady");
+            $out->addStatus("pizzalock", array("0", null, "notReady"));
             return false;
         }
 
@@ -442,12 +441,12 @@ class Pizza {
         $currentPersons = $this->getPersonsByPizza($pizzaID);
 
         if ($maxPerson == $currentPersons) {
-            $out->addStatus("pizzalock", "ready");
+            $out->addStatus("pizzalock", array("0", null, "ready"));
             
             return true;
         }
 
-        $out->addStatus("pizzalock", "notReady");
+        $out->addStatus("pizzalock", array("0", null, "notReady"));
         return false;
     }
 
