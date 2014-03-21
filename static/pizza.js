@@ -99,14 +99,16 @@ var gui={
 
 	createPizzaNode:function(pizza){
 		var wrapper=gui.build("div", "pizza");
+		wrapper.setAttribute("data-id", pizza.id);
 		var wantLink=gui.build("a", "button want-link", "Dabei!");
 		wantLink.href="#";
 
 		wrapper.appendChild(wantLink);
 		wrapper.appendChild(gui.build("h3", undefined, pizza.name));
 		wrapper.appendChild(gui.build("span", "contents", pizza.content));
-		wrapper.appendChild(gui.build("div", "persons", "Anzahl Personen: "+pizza.maxperson));
-		wrapper.appendChild(gui.build("div", "price", "Preis (Gesamt/pro Person): "+pizza.price+"/"+(pizza.price/pizza.maxperson)));
+		wrapper.appendChild(gui.build("div", "persons", "Anzahl Personen: "+pizza.maxpersons));
+		wrapper.appendChild(gui.build("div", "price", "Preis (Gesamt/pro Person): "+pizza.price+"/"+(pizza.price/pizza.maxpersons)));
+		wrapper.appendChild(gui.build("div", "people"));
 
 		return wrapper;
 	}
@@ -114,6 +116,7 @@ var gui={
 
 var pizza={
 	userinfo:{"name":"", "id":0},
+	interval:undefined,
 
 	killCookie:function(){
 		cookies.setCookie("pizza_user", "");
@@ -126,16 +129,47 @@ var pizza={
 		}
 		catch(e){
 			//no cookie
+			gui.statusDisplay("No user detected");
 			return;
 		}
 		if(pizza.userinfo.id!=0&&pizza.userinfo.name){
 			//TODO check if credentials match
 			pizza.updateAll();
 			gui.displayInterface("main");
+			gui.statusDisplay("User detected");
+		}
+	},
+
+	createPizza:function(){
+		var pname=gui.elem("new-name").value;
+		var pdesc=gui.elem("new-contents").value;
+		var pprice=parseFloat(gui.elem("new-price").value);
+		var pnump=parseInt(gui.elem("new-maxpersons").value,10);
+
+		if(pname&&pdesc&&!Number.isNaN(pprice)&&!Number.isNaN(pnump)){
+			api.asyncPost("add-pizza", JSON.stringify({"name":pname, "maxpersons":pnump, "price":pprice, "content":pdesc}),function(data){
+				//window.alert(JSON.stringify(data));
+				if(data.status.db=="ok"){
+				}
+				else{
+					gui.statusDisplay("Failed to add your pizza :(");
+				}
+				//refresh pizzas
+				pizza.updateAll();
+				//set view
+				gui.displayInterface("main");
+			});	
+		}
+		else{
+			gui.statusDisplay("Invalid input.");
 		}
 	},
 
 	updateAll:function(){
+		if(pizza.interval){
+			window.clearInterval(pizza.interval);
+		}
+
 		//kill current displays
 		var pizzas=document.getElementsByClassName("pizza");
 		while(pizzas.length>0){
@@ -145,14 +179,56 @@ var pizza={
 		//get all pizzas
 		api.asyncGet("pizzas",function(data){
 			if(data.status.db=="ok"&&data.pizzas){
-				window.alert(JSON.stringify(data.pizzas));
+				//window.alert(JSON.stringify(data.pizzas));
 				//create elements & display
 				data.pizzas.forEach(function(pizza){
 					var domNode=gui.createPizzaNode(pizza);
 					gui.elem("pizza-main").appendChild(domNode);
 				});
+				pizza.updateUsers();
+				pizza.interval=setInterval(pizza.updateUsers,5000)
+			}
+			else{
+				gui.statusDisplay("Failed to fetch pizza information");
 			}
 		});	
+	},
+
+	updateUsers:function(){
+		api.asyncGet("pizza-users", function(data){
+			if(data.status.db=="ok"&&data.pizzausers){
+				var pizzanodes=document.getElementsByClassName("pizza");
+				for(var i=0;i<data.pizzausers.length;i++){
+					//find node with this pizza
+					for(var c=0;c<pizzanodes.length;c++){
+						if(pizzanodes[c].getAttribute("data-id")==data.pizzausers[i].id){
+							//add user count to user stats
+							var persons=pizzanodes[c].getElementsByClassName("persons")[0];
+							var people=pizzanodes[c].getElementsByClassName("people")[0];
+
+							persons.textContent="Anzahl Personen: "+data.pizzausers[i].users.length+"/"+data.pizzausers[i].maxpersons;
+							//add users to people
+							people.innerHTML="";
+							people.innerText="Beteiligte:";
+							var list=gui.build("ul");
+							for(var d=0;d<data.pizzausers[i].users.length;d++){
+								list.appendChild(gui.build("li",undefined,data.pizzausers[i].users[d].name));
+							}
+							people.appendChild(list);
+
+							break;
+						}
+					}
+					if(c==pizzanodes.length){
+						//if not found, do pull TODO
+						window.alert("Pizza not found locally!");
+					}
+				}
+			}
+			else{
+				gui.statusDisplay("Failed fetching the user data");
+			}
+		});
 	},
 
 	userCreate:function(){
@@ -160,6 +236,7 @@ var pizza={
 		var uname=gui.elem("user-input").value;
 		//check for empty
 		if(!uname||uname.match("/^\s*$/")){
+			gui.statusDisplay("Invalid user name");
 			return;
 		}
 		//try to register

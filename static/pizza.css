@@ -64,6 +64,10 @@ a{
 	font-style:italic;
 }
 
+.pizza-input{
+	width:20em;
+}
+
 .button{
 	background-color:#ccc;
 	padding:0.2em;
