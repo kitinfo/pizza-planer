@@ -111,12 +111,24 @@ var gui={
 		wrapper.appendChild(gui.build("div", "price", "Preis (Gesamt/pro Person): "+nodePizza.price+"/"+(nodePizza.price/nodePizza.maxpersons)));
 		wrapper.appendChild(gui.build("div", "people"));
 
+		if(pizza.admin){
+			var deleteLink=gui.build("a", "button", "Delete");
+			deleteLink.onclick=pizza.deletePizza;
+			deleteLink.href="#";
+			wrapper.appendChild(deleteLink);
+		
+			var buyLink=gui.build("a", "button", "Mark bought");
+			buyLink.onclick=pizza.buyPizza;
+			buyLink.href="#";
+			wrapper.appendChild(buyLink);
+		}
 		return wrapper;
 	}
 };
 
 var pizza={
 	userinfo:{"name":"", "id":0},
+	admin:"",
 	interval:undefined,
 
 	killCookie:function(){
@@ -139,6 +151,31 @@ var pizza={
 			gui.displayInterface("main");
 			gui.statusDisplay("User detected");
 		}
+	},
+
+	enableAdmin:function(){
+		//ask for admin secret
+		pizza.admin=window.prompt("Admin secret?");
+		pizza.updateAll();
+	},
+
+	deletePizza:function(event){
+		//TODO
+	},
+
+	buyPizza:function(event){
+		var pizzaId=event.target.parentNode.getAttribute("data-id");
+		api.asyncPost("buy-pizza", JSON.stringify({"id":pizzaId,"secret":pizza.admin}), function(data){
+			if(data.status.db=="ok"&&data.status.access=="granted"){
+				gui.statusDisplay("Pizza marked as bought.");
+			}
+			else if(data.status.access=="denied"){
+				gui.statusDisplay("Admin access denied");
+			}
+			else{
+				gui.statusDisplay("Failed to mark pizza as bought: "+data.status["buy-pizza"][2]);
+			}
+		});
 	},
 
 	changeParticipation:function(event){
