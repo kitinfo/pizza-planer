@@ -27,8 +27,9 @@
 				</div>
 				<div id="pizza-main" class="ui-box">
 					<div class="head-buttons">
-						<a href="#" onclick="" class="button">Abmelden</a>
-						<a href="#" onclick="" class="button">Neue Pizza</a>
+						Angemeldet als <span id="main-user">n/a</span>
+						<a href="#" onclick="pizza.updateAll();" class="button">Update</a>
+						<a href="#" onclick="gui.displayInterface('new');" class="button">Neue Pizza</a>
 					</div>
 					<h2>Momentane Pizzas</h2>
 					<div class="pizza">
@@ -47,7 +48,7 @@
 				</div>
 				<div id="pizza-new" class="ui-box">
 					<div class="head-buttons">
-						<a href="#" onclick="" class="button">Lass bleiben</a>
+						<a href="#" onclick="gui.displayInterface('main');" class="button">Lass bleiben</a>
 					</div>
 					<h2>Neue Pizza eintragen</h2>
 					<table>
@@ -61,11 +62,11 @@
 						</tr>
 						<tr>
 							<td>Gesamtpreis</td>
-							<td><input type="text" name="new-price" /></td>
+							<td><input type="text" id="new-price" /></td>
 						</tr>
 						<tr>
 							<td>Maximale Personenzahl</td>
-							<td><input type="text" name="new-maxpersons"/></td>
+							<td><input type="text" id="new-maxpersons"/></td>
 						</tr>
 						<tr>
 							<td></td>
