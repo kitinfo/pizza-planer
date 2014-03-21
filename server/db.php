@@ -77,7 +77,7 @@ function request($db, $tag, $searchTag, $retVal) {
         } else {
             $STMT = $db->query("SELECT * FROM " . $tag);
         }
-        
+
         $out = Output::getInstance();
 
         if ($STMT !== FALSE) {
@@ -116,16 +116,16 @@ class Output {
     }
 
     public function addStatus($table, $output) {
-        
+
         if ($output[1] != NULL) {
             $this->retVal["status"]["db"] = "failed";
         }
-        
+
         $this->retVal['status'][$table] = $output;
     }
 
     public function write() {
-        
+
         header("Content-Type: application/json");
         header("Access-Control-Allow-Origin: *");
         # Rückmeldung senden
@@ -165,7 +165,6 @@ class Controller {
                 die(json_encode($retVal));
             }
             return $stm;
-            
         } catch (Exception $ex) {
             $retVal["status"]["db"] = $ex->getMessage();
             die(json_encode($retVal));
@@ -196,11 +195,11 @@ class Controller {
         ));
 
         $out = Output::getInstance();
-        
-        
+
+
         $out->addStatus("user", $stm->errorInfo());
         $out->add("user", $this->getDB()->lastInsertId());
-        
+
         $stm->closeCursor();
     }
 
@@ -269,18 +268,119 @@ class Pizza {
 
     function setReady($id, $bool) {
         $sql = "UPDATE users SET ready = :bool WHERE id = :id";
-        
+
         $con = $this->controller;
-        
+
         $stm = $con->exec($sql, array(
-           ":id" => $id,
+            ":id" => $id,
             ":bool" => $bool
         ));
-        
+
         $out = Output::getInstance();
 
         $out->addStatus("set-ready", $stm->errorInfo());
         $out->add("set-ready", $con->getDB()->lastInsertId());
+
+        $stm->closeCursor();
+
+        $this->checkPizzaLock($id);
+    }
+
+    function checkPizzaLock($id) {
+        $con = $this->controller;
+        $out = Output::getInstance();
+        $pizzaID = $this->getPizzaFromUserID($id);
+
+        $sql = "SELECT id FROM users WHERE NOT ready AND pizza = :pizza";
+
+        $stm = $con->exec($sql, array(
+            ":pizza" => $pizzaID
+        ));
+
+
+        $notReadyUser = $stm->fetch();
+        $out->addStatus("notReadyUser", $notReadyUser);
+        if ($notReadyUser) {
+            $out->addStatus("pizzalock", "notReady");
+            return;
+        }
+
+        $maxPersons = $this->getMaxPersons($pizzaID);
+        $currentPersons = $this->getPersonsByPizza($pizzaID);
+
+        if ($maxPersons == $currentPersons) {
+            $out->addStatus("pizzalock", "ready");
+            $this->lockPizza($pizzaID, true);
+            return;
+        }
+        
+        $out->addStatus("pizzalock", "notReady");
+    }
+    
+    function lockPizza($id, $bool) {
+        $sql = "UPDATE pizzas SET lock = :bool WHERE id = :id";
+
+        $con = $this->controller;
+
+        $stm = $con->exec($sql, array(
+            ":id" => $id,
+            ":bool" => $bool
+        ));
+
+        $out = Output::getInstance();
+
+        $out->addStatus("lock-pizza", $stm->errorInfo());
+        $out->add("lock-pizza", $con->getDB()->lastInsertId());
+
+        $stm->closeCursor();
+    }
+
+    function getMaxPersons($id) {
+        $con = $this->controller;
+
+        $sql = "SELECT maxpersons FROM pizzas WHERE id = :id";
+
+        $stm = $con->exec($sql, array(
+            ":id" => $id
+        ));
+        $pizzas = $stm->fetch();
+        if (count($pizzas) > 0) {
+            return $pizzas[0];
+        } else {
+            return 0;
+        }
+    }
+
+    function getPersonsByPizza($pizzaID) {
+        $con = $this->controller;
+
+        $sql = "SELECT * FROM users WHERE pizza = :id";
+
+        $stm = $con->exec($sql, array(
+            ":id" => $pizzaID
+        ));
+        $pizzas = $stm->fetchAll(PDO::FETCH_ASSOC);
+        
+        if ($pizzas) {
+            return count($pizzas);
+        }
+        return 0;
+    }
+
+    function getPizzaFromUserID($id) {
+        $con = $this->controller;
+
+        $sql = "SELECT pizza FROM users WHERE id = :id";
+
+        $stm = $con->exec($sql, array(
+            ":id" => $id
+        ));
+        $pizzas = $stm->fetch(); //$stm->fetchAll(PDO::FETCH_ASSOC);
+        if (count($pizzas) > 0) {
+            return $pizzas[0];
+        } else {
+            return 0;
+        }
     }
 
     function buy() {
