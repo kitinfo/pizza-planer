@@ -16,9 +16,9 @@ foreach ($tables as $table) {
     request($controller->getDB(), $table, $TABLES[$table], $retVal);
 }
 $pizza = new Pizza($controller);
-if (isset($_GET["pizzausers"])) {
-    if (!empty($_GET["pizzausers"])) {
-        $pizza->getPizzaUsersByID($id);
+if (isset($_GET["pizza-users"])) {
+    if (!empty($_GET["pizza-users"])) {
+        $pizza->getPizzaUsersByID($_GET["pizza-users"]);
     } else {
         $pizza->getPizzaUsers();
     }
@@ -280,7 +280,7 @@ class Pizza {
             );
         }
         
-        Output::getInstance()->add("pizzaUser", $result);
+        Output::getInstance()->add("pizzausers", $result);
     }
     
     function getPizzas() {
