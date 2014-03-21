@@ -48,7 +48,9 @@ if (isset($http_raw) && !empty($http_raw)) {
         $user->changePizza($obj["id"], $obj["to"]);
     }
     if (isset($_GET["pay"])) {
-        $user->pay($obj["id"], $obj["bool"]);
+        if ($controller->checkSecret($obj["secret"])) {
+            $user->pay($obj["id"], $obj["bool"]);
+        }
     }
 }
 
@@ -158,6 +160,21 @@ class Controller {
             $retVal["status"]["db"] = $ex->getMessage();
             die(json_encode($retVal));
         }
+    }
+    
+    public function checkSecret($secret) {
+        $sql = "SELECT * FROM system WHERE key = 'secret'";
+        
+        $stm = $this->exec($sql, array());
+        
+        $secretTable = $stm->fetch();
+        $stm->closeCursor();
+        if ($secretTable["value"] == $secret) {
+            Output::getInstance()->addStatus("access", "granted");
+            return true;
+        }
+        Output::getInstance()->addStatus("access", "denied");
+        return false;
     }
 
     private function prepare($sql) {
