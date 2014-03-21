@@ -239,7 +239,7 @@ class Pizza {
         $this->controller = $controller;
     }
 
-    function addPizza($name, $maxPersons, $price, $content) {
+    function addPizza($name, $maxPerson, $price, $content) {
 
         $sql = "INSERT INTO pizzas(name, maxperson, price, content) VALUES(:name, :maxperson, :price, :content)";
 
@@ -247,7 +247,7 @@ class Pizza {
 
         $stm = $con->exec($sql, array(
             ":name" => $name,
-            ":maxperson" => $maxPersons,
+            ":maxperson" => $maxPerson,
             ":price" => $price,
             ":content" => $content
         ));
@@ -305,10 +305,10 @@ class Pizza {
             return;
         }
 
-        $maxPersons = $this->getMaxPersons($pizzaID);
+        $maxPerson = $this->getMaxPerson($pizzaID);
         $currentPersons = $this->getPersonsByPizza($pizzaID);
 
-        if ($maxPersons == $currentPersons) {
+        if ($maxPerson == $currentPersons) {
             $out->addStatus("pizzalock", "ready");
             $this->lockPizza($pizzaID, true);
             return;
@@ -335,10 +335,10 @@ class Pizza {
         $stm->closeCursor();
     }
 
-    function getMaxPersons($id) {
+    function getMaxPerson($id) {
         $con = $this->controller;
 
-        $sql = "SELECT maxpersons FROM pizzas WHERE id = :id";
+        $sql = "SELECT maxperson FROM pizzas WHERE id = :id";
 
         $stm = $con->exec($sql, array(
             ":id" => $id
