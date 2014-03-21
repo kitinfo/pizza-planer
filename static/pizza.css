@@ -1,5 +1,6 @@
 body{
 	width:100%;
+	background-image:url(pattern.png);
 }
 
 h1,h2,h3,ul{
