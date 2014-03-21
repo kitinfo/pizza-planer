@@ -13,7 +13,7 @@ var api={
 			}
 			catch(e){
 				gui.statusDisplay("Error parsing response data");
-				return
+				return;
 			}
 
 			completionfunc(data);
@@ -54,18 +54,18 @@ var gui={
 };
 
 var pizza={
-	user:{},
+	userinfo:{"name":"", "id":0},
 
 	init:function(){
 		//check if cookie present
 		try{
-			pizza.user=JSON.parse(cookies.getCookie("pizza_user"));
+			pizza.userinfo=JSON.parse(cookies.getCookie("pizza_user"));
 		}
 		catch(e){
 			//no cookie
 			return;
 		}
-		if(pizza.user.id&&pizza.user.name){
+		if(pizza.userinfo.id!=0&&pizza.userinfo.name){
 			//TODO check if credentials match
 			gui.displayInterface("main");
 		}
@@ -81,7 +81,13 @@ var pizza={
 		//try to register
 		api.asyncPost("add-user", JSON.stringify({"name":uname}), function(data){
 			window.alert(JSON.stringify(data));
-			
+			if(data.status.status=="ok"&&data.user!=0){
+				pizza.userinfo={};
+				pizza.userinfo.name=uname;
+				pizza.userinfo.id=data.user;
+				cookies.setCookie("pizza_user", JSON.stringify(pizza.userinfo));
+				gui.displayInterface("main");
+			}	
 		});
 		//if taken, err out
 		//else display main
