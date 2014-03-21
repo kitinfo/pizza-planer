@@ -42,8 +42,7 @@ if (isset($http_raw) && !empty($http_raw)) {
         }
     }
     if (isset($_GET["add-pizza"])) {
-        $pizza->addPizza($obj["name"], $obj["maxperson"], $obj["price"], $obj["tip"]);
-        Output::getInstance()->output();
+        $pizza->addPizza($obj["name"], $obj["maxperson"], $obj["price"], $obj["content"]);
     }
     if (isset($_GET["torrent-del"])) {
         $retVal["status"] = delTorrent($db, $obj["id"]);
@@ -207,15 +206,17 @@ class Controller {
 
         $sql = "INSERT INTO users(name) VALUES(:name)";
 
-        $stm = $this->prepare($sql);
-
-        $stm = $this->execute($stm, array(
+        $stm = $this->exec($sql, array(
             ":name" => $name
         ));
 
-        $error = $stm->errorInfo();
+        $out = Output::getInstance();
+        
+        
+        $out->addStatus("user", $stm->errorInfo());
+        $out->add("user", $this->getDB()->lastInsertId());
+        
         $stm->closeCursor();
-        return $error;
     }
 
     public function getUser($id) {
@@ -254,9 +255,9 @@ class Pizza {
         $this->controller = $controller;
     }
 
-    function addPizza($name, $maxPersons, $price, $tip) {
+    function addPizza($name, $maxPersons, $price, $content) {
 
-        $sql = "INSERT INTO pizzas(name, maxperson, price, tip) VALUES(:name, :maxperson, :price, :tip)";
+        $sql = "INSERT INTO pizzas(name, maxperson, price, content) VALUES(:name, :maxperson, :price, :content)";
 
         $con = $this->controller;
 
@@ -264,12 +265,13 @@ class Pizza {
             ":name" => $name,
             ":maxperson" => $maxPersons,
             ":price" => $price,
-            ":tip" => $tip
+            ":content" => $content
         ));
 
         $out = Output::getInstance();
 
         $out->addStatus("addpizza", $stm->errorInfo());
+        $out->add("pizza", $con->getDB()->lastInsertId());
     }
 
     function changePizza($userid, $to) {
