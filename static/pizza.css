@@ -1,0 +1,50 @@
+body{
+	width:100%;
+}
+
+h1,h2{
+	padding:0;
+	margin:0;
+}
+
+a{
+	text-decoration:none;
+}
+
+#center-wrap{
+	width:80%;
+	margin:0 auto;
+}
+
+#head-banner{
+	border-bottom:1px solid #ddd;
+	vertical-align:bottom;
+}
+
+#head-banner img {
+	float:left;
+}
+
+.ui-box {
+	clear:both;
+	margin-top:1em;
+	background-color:#eee;
+	padding:1em;
+}
+
+.button{
+	background-color:#ccc;
+	padding:0.2em;
+	margin:0.3em;
+	display:inline-block;
+	border-radius:0.4em;
+	border:1px solid #ddd;
+}
+
+.button:hover{
+	background-color:#bbb;
+}
+
+.icebreaker {
+	clear:both;
+}
