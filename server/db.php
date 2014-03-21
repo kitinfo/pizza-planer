@@ -395,7 +395,7 @@ class Pizza {
     function getPizzaUsersByID($id) {
         global $controller;
 
-        $sql = "SELECT name, ready FROM users WHERE pizza = :id";
+        $sql = "SELECT name, ready, paid FROM users WHERE pizza = :id";
 
         $stm = $controller->exec($sql, array(
             ":id" => $id
