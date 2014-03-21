@@ -97,17 +97,18 @@ var gui={
 		gui.updateMovingParts();
 	},
 
-	createPizzaNode:function(pizza){
+	createPizzaNode:function(nodePizza){
 		var wrapper=gui.build("div", "pizza");
-		wrapper.setAttribute("data-id", pizza.id);
+		wrapper.setAttribute("data-id", nodePizza.id);
 		var wantLink=gui.build("a", "button want-link", "Dabei!");
+		wantLink.onclick=pizza.changeParticipation;
 		wantLink.href="#";
 
 		wrapper.appendChild(wantLink);
-		wrapper.appendChild(gui.build("h3", undefined, pizza.name));
-		wrapper.appendChild(gui.build("span", "contents", pizza.content));
-		wrapper.appendChild(gui.build("div", "persons", "Anzahl Personen: "+pizza.maxpersons));
-		wrapper.appendChild(gui.build("div", "price", "Preis (Gesamt/pro Person): "+pizza.price+"/"+(pizza.price/pizza.maxpersons)));
+		wrapper.appendChild(gui.build("h3", undefined, nodePizza.name));
+		wrapper.appendChild(gui.build("span", "contents", nodePizza.content));
+		wrapper.appendChild(gui.build("div", "persons", "Anzahl Personen: "+nodePizza.maxpersons));
+		wrapper.appendChild(gui.build("div", "price", "Preis (Gesamt/pro Person): "+nodePizza.price+"/"+(nodePizza.price/nodePizza.maxpersons)));
 		wrapper.appendChild(gui.build("div", "people"));
 
 		return wrapper;
@@ -140,6 +141,19 @@ var pizza={
 		}
 	},
 
+	changeParticipation:function(event){
+		var pizzaId=event.target.parentNode.getAttribute("data-id");
+		api.asyncPost("change-pizza", JSON.stringify({"id":pizza.userinfo.id, "to":pizzaId}), function(data){
+			if(data.status.db=="ok"){
+				gui.statusDisplay("Participation registered");
+			}
+			else{
+				gui.statusDisplay("Failed to participate in pizza :(");
+			}
+			pizza.updateUsers();
+		});
+	},
+
 	createPizza:function(){
 		var pname=gui.elem("new-name").value;
 		var pdesc=gui.elem("new-contents").value;
@@ -150,14 +164,14 @@ var pizza={
 			api.asyncPost("add-pizza", JSON.stringify({"name":pname, "maxpersons":pnump, "price":pprice, "content":pdesc}),function(data){
 				//window.alert(JSON.stringify(data));
 				if(data.status.db=="ok"){
+					//refresh pizzas
+					pizza.updateAll();
+					//set view
+					gui.displayInterface("main");
 				}
 				else{
 					gui.statusDisplay("Failed to add your pizza :(");
 				}
-				//refresh pizzas
-				pizza.updateAll();
-				//set view
-				gui.displayInterface("main");
 			});	
 		}
 		else{
@@ -205,17 +219,27 @@ var pizza={
 							//add user count to user stats
 							var persons=pizzanodes[c].getElementsByClassName("persons")[0];
 							var people=pizzanodes[c].getElementsByClassName("people")[0];
+							var participate=pizzanodes[c].getElementsByClassName("want-link")[0];
+
+							if(data.pizzausers[i].users.length<data.pizzausers[i].maxpersons){
+								participate.style.display="inline-block";
+							}
+							else{
+								participate.style.display="none";
+							}
 
 							persons.textContent="Anzahl Personen: "+data.pizzausers[i].users.length+"/"+data.pizzausers[i].maxpersons;
-							//add users to people
+						
 							people.innerHTML="";
-							people.innerText="Beteiligte:";
-							var list=gui.build("ul");
-							for(var d=0;d<data.pizzausers[i].users.length;d++){
-								list.appendChild(gui.build("li",undefined,data.pizzausers[i].users[d].name));
+							if(data.pizzausers[i].users.length>0){
+								//add users to people
+								people.innerText="Beteiligte:";
+								var list=gui.build("ul");
+								for(var d=0;d<data.pizzausers[i].users.length;d++){
+									list.appendChild(gui.build("li",undefined,data.pizzausers[i].users[d].name));
+								}
+								people.appendChild(list);
 							}
-							people.appendChild(list);
-
 							break;
 						}
 					}
