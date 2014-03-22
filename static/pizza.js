@@ -101,7 +101,7 @@ var gui={
 		var wrapper=gui.build("div", "pizza");
 		wrapper.setAttribute("data-id", nodePizza.id);
 		var wantLink=gui.build("span", "button want-link", "Dabei!");
-		wantLink.onclick=pizza.changeParticipation;
+		//wantLink.onclick=pizza.changeParticipation;
 		wantLink.href="#";
 
 		wrapper.appendChild(wantLink);
@@ -310,6 +310,7 @@ var pizza={
 							var people=pizzanodes[c].getElementsByClassName("people")[0];
 							var participate=pizzanodes[c].getElementsByClassName("want-link")[0];
 							participate.textContent="Dabei!";
+							participate.onclick=pizza.changeParticipation;
 
 							if(data.pizzausers[i].users.length<data.pizzausers[i].maxpersons&&data.pizzausers[i].lock!=1){
 								participate.style.display="inline-block";
@@ -329,8 +330,9 @@ var pizza={
 									list.appendChild(gui.build("li",undefined,data.pizzausers[i].users[d].name+(data.pizzausers[i].users[d].ready==1?" (Ready)":"")));
 									if(data.pizzausers[i].users[d].name==pizza.userinfo.name){
 										if(data.pizzausers[i].lock!=1){
+											participate.style.display="inline-block";
 											participate.textContent="Toggle Ready";
-											participate.onClick=pizza.toggleUserReady;
+											participate.onclick=pizza.toggleUserReady;
 										}
 										else{
 											participate.style.display="none";
