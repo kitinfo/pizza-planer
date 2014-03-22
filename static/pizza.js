@@ -235,7 +235,7 @@ var pizza={
 		api.asyncPost("toggle-ready", JSON.stringify({"id":pizza.userinfo.id}), function(data){
 			if(data.status.db=="ok"){
 				gui.statusDisplay("User marked as ready");
-				pizza.updateUsers();
+				pizza.updateAll();
 			}
 			else{
 				gui.statusDisplay("Failed to set status");
