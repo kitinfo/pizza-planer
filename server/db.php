@@ -303,8 +303,14 @@ class User {
      * @param type $to id of the pizza
      */
     function changePizza($userid, $to) {
-        global $out;
-        global $controller;
+        global $out, $controller, $pizza;
+        
+        if ($pizza->lockStatus($pizza->getPizzaFromUserID($userid))) {
+            $out->addStatus("set-ready", array(
+                "75834", 87, "Pizza is locked"
+            ));
+            return;
+        }
 
         $sql = "UPDATE users SET pizza = :pizza WHERE id = :id";
 
@@ -351,6 +357,14 @@ class User {
      */
     function setReady($id) {
         global $controller, $out, $pizza;
+
+
+        if ($pizza->lockStatus($pizza->getPizzaFromUserID($id) == 1)) {
+            $out->addStatus("set-ready", array(
+                "75834", 87, "Pizza is locked"
+            ));
+            return;
+        }
 
         $sql = "UPDATE users SET ready = NOT ready WHERE id = :id AND pizza NOT NULL";
 
@@ -432,7 +446,7 @@ class Pizza {
         $this->setLock($id, $this->lockStatus($id));
     }
 
-    private function lockStatus($id) {
+    public function lockStatus($id) {
         global $controller;
 
         $sql = "SELECT lock FROM pizzas WHERE id = :id";
@@ -443,7 +457,7 @@ class Pizza {
         $pizzas = $stm->fetch();
 
         if (count($pizzas) > 0) {
-            
+
             return $pizzas[0];
         } else {
             return 0;
