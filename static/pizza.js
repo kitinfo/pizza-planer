@@ -105,7 +105,7 @@ var gui={
 		wantLink.href="#";
 
 		wrapper.appendChild(wantLink);
-		wrapper.appendChild(gui.build("h3", (nodePizza.bought==1)?"strike":undefined, nodePizza.name, (nodePizza.lock==1&&nodePizza.bought!=1)?gui.build("em",undefined," (Locked)"):undefined));
+		wrapper.appendChild(gui.build("h3", "pizza-name "+((nodePizza.bought==1)?"strike":""), nodePizza.name, gui.build("em","lock-display",(nodePizza.lock==1&&nodePizza.bought!=1)?" (Locked)":"")));
 		wrapper.appendChild(gui.build("span", "contents", nodePizza.content));
 		wrapper.appendChild(gui.build("div", "persons", "Anzahl Personen: "+nodePizza.maxpersons));
 		wrapper.appendChild(gui.build("div", "price", "Preis (Gesamt/pro Person): "+nodePizza.price+"/"+(nodePizza.price/nodePizza.maxpersons)));
@@ -235,7 +235,7 @@ var pizza={
 		api.asyncPost("toggle-ready", JSON.stringify({"id":pizza.userinfo.id}), function(data){
 			if(data.status.db=="ok"){
 				gui.statusDisplay("User marked as ready");
-				pizza.updateAll();
+				pizza.updateUsers();
 			}
 			else{
 				gui.statusDisplay("Failed to set status");
@@ -306,6 +306,8 @@ var pizza={
 					for(var c=0;c<pizzanodes.length;c++){
 						if(pizzanodes[c].getAttribute("data-id")==data.pizzausers[i].id){
 							//add user count to user stats
+							var header=pizzanodes[c].getElementsByClassName("pizza-name")[0];
+							var lockDisplay=header.getElementsByClassName("lock-display")[0];
 							var persons=pizzanodes[c].getElementsByClassName("persons")[0];
 							var people=pizzanodes[c].getElementsByClassName("people")[0];
 							var participate=pizzanodes[c].getElementsByClassName("want-link")[0];
@@ -317,6 +319,20 @@ var pizza={
 							}
 							else{
 								participate.style.display="none";
+							}
+							
+							if(data.pizzausers[i].bought==1){
+								header.style.className="title strike";
+							}
+							else{
+								header.style.className="title";
+							}
+
+							if(data.pizzausers[i].lock==1){
+								lockDisplay.textContent=" (Locked)";
+							}
+							else{
+								lockDisplay.textContent="";
 							}
 
 							persons.textContent="Anzahl Personen: "+data.pizzausers[i].users.length+"/"+data.pizzausers[i].maxpersons;
