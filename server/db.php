@@ -63,6 +63,11 @@ function main() {
         if (isset($_GET["check-user"])) {
             $user->check($obj["id"], $obj["name"]);
         }
+        if (isset($_GET["unlock"])) {
+            if ($controller->checkSecret($obj["secret"])) {
+                $pizza->unlock($obj["id"]);
+            }
+        }
     }
 
     $out->write();
@@ -411,6 +416,41 @@ class Pizza {
         }
 
         $out->addStatus("buy-pizza", array("99999", 99, "Pizza is not ready for buy"));
+    }
+
+    /**
+     * Unlocks a pizza and resets all ready states
+     * @global type $out
+     * @global Controller $controller
+     * @param type $id id of the pizza
+     */
+    public function unlock($id) {
+        global $out, $controller;
+
+        $sql = "UPDATE pizzas SET lock = 0 WHERE id = :id";
+
+        $stm = $controller->exec($sql, array(
+            ":id" => $id
+        ));
+
+        $out->addStatus("unlock", $stm->errorInfo());
+        $out->add("unlock", $id);
+
+        $stm->closeCursor();
+
+        $sql = "UPDATE users SET ready = 0 WHERE pizza = :id";
+
+        $stm = $controller->exec($sql, array(
+            ":id" => $id
+        ));
+
+        $out->addStatus("ready", $stm->errorInfo());
+        $out->add("ready", $id);
+        $stm->closeCursor();
+    }
+
+    public function delete($id) {
+        
     }
 
     /**
