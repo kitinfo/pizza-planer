@@ -151,7 +151,7 @@ var pizza={
 			return;
 		}
 		if(pizza.userinfo.id!=0&&pizza.userinfo.name){
-			//TODO check if credentials match
+			//check if credentials match
 			api.asyncPost("check-user", JSON.stringify(pizza.userinfo), function(data){
 				if(data["check-user"]=="valid"){
 					pizza.updateAll();
@@ -174,7 +174,18 @@ var pizza={
 
 	deletePizza:function(event){
 		var pizzaId=event.target.parentNode.getAttribute("data-id");
-		//TODO
+		api.asyncPost("delete-pizza", JSON.stringify({"id":pizzaId,"secret":pizza.admin}), function(data){
+			if(data.status.db=="ok"&&data.status.access[2]=="granted"){
+				gui.statusDisplay("Pizza deleted.");
+				pizza.updateAll();
+			}
+			else if(data.status.access=="denied"){
+				gui.statusDisplay("Admin access denied");
+			}
+			else{
+				gui.statusDisplay("Failed to delete: "+data.status["delete-pizza"][2]);
+			}
+		});
 	},
 
 	togglePizzaLock:function(event){
@@ -208,6 +219,10 @@ var pizza={
 			}
 			pizza.updateUsers();
 		});
+	},
+
+	toggleUserReady:function(event){
+		//TODO
 	},
 
 	createPizza:function(){
@@ -297,6 +312,7 @@ var pizza={
 									if(data.pizzausers[i].users[d].name==pizza.userinfo.name){
 										if(data.pizzausers[i].lock!=1){
 											participate.textContent="Toggle Ready";
+											participate.onClick=pizza.toggleUserReady;
 										}
 										else{
 											participate.style.display="none";
@@ -310,7 +326,7 @@ var pizza={
 					}
 					if(c==pizzanodes.length){
 						//if not found, do pull TODO
-						window.alert("Pizza not found locally!");
+						window.alert("Pizza "+data.pizzausers[i].id+" not found locally!");
 					}
 				}
 			}
