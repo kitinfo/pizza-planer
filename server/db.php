@@ -45,7 +45,7 @@ function main() {
             $pizza->addPizza($obj["name"], $obj["maxpersons"], $obj["price"], $obj["content"]);
         }
         if (isset($_GET["set-ready"])) {
-            $user->setReady($obj["id"], $obj["bool"]);
+            $user->setReady($obj["id"]);
         }
         if (isset($_GET["change-pizza"])) {
             $user->changePizza($obj["id"], $obj["to"]);
@@ -199,7 +199,7 @@ class Controller {
 
         try {
             $stm = $db->prepare($sql);
-            if ($db->errorCode() != 0) {
+            if ($db->errorInfo()[1] != null) {
                 $retVal["status"]["db"] = $db->errorInfo();
                 die(json_encode($retVal));
             }
@@ -349,23 +349,26 @@ class User {
      * @param type $id id of the user
      * @param type $bool true if ready
      */
-    function setReady($id, $bool) {
-        global $controller, $out;
+    function setReady($id) {
+        global $controller, $out, $pizza;
 
-
-        $sql = "UPDATE users SET ready = :bool WHERE id = :id";
+        $sql = "UPDATE users SET ready = NOT ready WHERE id = :id AND pizza NOT NULL";
 
         $stm = $controller->exec($sql, array(
             ":id" => $id,
-            ":bool" => $bool
         ));
 
         $out->addStatus("set-ready", $stm->errorInfo());
-        $out->add("set-ready", $controller->getDB()->lastInsertId());
+        
+        if ($stm->rowCount() < 1) {
+            $out->addStatus("set-ready", array(
+               "99996", 88, "Pizza not set." 
+            ));
+        }
 
         $stm->closeCursor();
 
-        $this->pizza->checkPizzaLock($id);
+        $pizza->checkPizzaLock($id);
     }
 
     function check($id, $name) {
