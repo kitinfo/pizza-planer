@@ -190,7 +190,17 @@ var pizza={
 
 	togglePizzaLock:function(event){
 		var pizzaId=event.target.parentNode.getAttribute("data-id");
-		//TODO
+		api.asyncPost("toggle-lock", JSON.stringify({"id":pizzaId, "secret":pizza.admin}), function(data){
+			if(data.status.db=="ok"&&data.status.access[2]=="granted"){
+				gui.statusDisplay("Pizza lock status changed");
+			}
+			else if(data.status.access=="denied"){
+				gui.statusDisplay("Admin access denied");
+			}
+			else{
+				gui.statusDisplay("Failed to toggle lock: "+data.status["buy-pizza"][2]);
+			}
+		});
 	},
 
 	buyPizza:function(event){
@@ -222,7 +232,15 @@ var pizza={
 	},
 
 	toggleUserReady:function(event){
-		//TODO
+		api.asyncPost("toggle-ready", JSON.stringify({"id":pizza.userinfo.id}), function(data){
+			if(data.status.db=="ok"){
+				gui.statusDisplay("User marked as ready");
+				pizza.updateUsers();
+			}
+			else{
+				gui.statusDisplay("Failed to set status");
+			}
+		});
 	},
 
 	createPizza:function(){
