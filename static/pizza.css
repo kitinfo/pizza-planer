@@ -38,6 +38,10 @@ a{
 	float:left;
 }
 
+#footer{
+	float:right;
+}
+
 .head-buttons{
 	float:right;
 }
