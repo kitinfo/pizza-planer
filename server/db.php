@@ -311,6 +311,13 @@ class User {
             ));
             return;
         }
+        
+        if ($this->isReady($userid)) {
+            $out->addStatus("set-ready", array(
+                "75833", 86, "User is ready."
+            ));
+            return;
+        }
 
         $sql = "UPDATE users SET pizza = :pizza WHERE id = :id";
 
@@ -323,6 +330,24 @@ class User {
         $out->add("change-pizza", $controller->getDB()->lastInsertId());
 
         $stm->closeCursor();
+    }
+    
+    function isReady($id) {
+        global $controller;
+
+        $sql = "SELECT ready FROM users WHERE id = :id";
+
+        $stm = $controller->exec($sql, array(
+            ":id" => $id
+        ));
+        $ready = $stm->fetch();
+
+        if (count($ready) > 0) {
+
+            return $ready[0];
+        } else {
+            return false;
+        }
     }
 
     /**
