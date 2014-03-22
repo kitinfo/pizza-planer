@@ -44,7 +44,7 @@ function main() {
         if (isset($_GET["add-pizza"])) {
             $pizza->addPizza($obj["name"], $obj["maxpersons"], $obj["price"], $obj["content"]);
         }
-        if (isset($_GET["set-ready"])) {
+        if (isset($_GET["toggle-ready"])) {
             $user->setReady($obj["id"]);
         }
         if (isset($_GET["change-pizza"])) {
@@ -63,9 +63,9 @@ function main() {
         if (isset($_GET["check-user"])) {
             $user->check($obj["id"], $obj["name"]);
         }
-        if (isset($_GET["unlock"])) {
+        if (isset($_GET["toggle-lock"])) {
             if ($controller->checkSecret($obj["secret"])) {
-                $pizza->unlock($obj["id"]);
+                $pizza->toggleLock($obj["id"]);
             }
         }
         if (isset($_GET["delete-pizza"])) {
@@ -359,10 +359,10 @@ class User {
         ));
 
         $out->addStatus("set-ready", $stm->errorInfo());
-        
+
         if ($stm->rowCount() < 1) {
             $out->addStatus("set-ready", array(
-               "99996", 88, "Pizza not set." 
+                "99996", 88, "Pizza not set."
             ));
         }
 
@@ -426,30 +426,56 @@ class Pizza {
         $out->addStatus("buy-pizza", array("99999", 99, "Pizza is not ready for buy"));
     }
 
+    public function toggleLock($id) {
+
+        // get lock status
+        $this->setLock($id, $this->lockStatus($id));
+    }
+
+    private function lockStatus($id) {
+        global $controller;
+
+        $sql = "SELECT lock FROM pizzas WHERE id = :id";
+
+        $stm = $controller->exec($sql, array(
+            ":id" => $id
+        ));
+        $pizzas = $stm->fetch();
+
+        if (count($pizzas) > 0) {
+            
+            return $pizzas[0];
+        } else {
+            return 0;
+        }
+    }
+
     /**
      * Unlocks a pizza and resets all ready states
      * @global type $out
      * @global Controller $controller
      * @param type $id id of the pizza
      */
-    public function unlock($id) {
+    public function setLock($id, $lock) {
         global $out, $controller;
 
-        $sql = "UPDATE pizzas SET lock = 0 WHERE id = :id";
+        $sql = "UPDATE pizzas SET lock = NOT :lock WHERE id = :id";
 
         $stm = $controller->exec($sql, array(
-            ":id" => $id
+            ":id" => $id,
+            ":lock" => $lock
         ));
 
-        $out->addStatus("unlock", $stm->errorInfo());
-        $out->add("unlock", $id);
+        $out->addStatus("lock", $stm->errorInfo());
+        $out->add("lock", $id);
 
         $stm->closeCursor();
 
-        $sql = "UPDATE users SET ready = 0 WHERE pizza = :id";
+        $sql = "UPDATE users SET ready = NOT :lock WHERE pizza = :id";
 
         $stm = $controller->exec($sql, array(
-            ":id" => $id
+            ":id" => $id,
+            ":lock" => $lock
         ));
 
         $out->addStatus("ready", $stm->errorInfo());
@@ -465,13 +491,13 @@ class Pizza {
      */
     public function delete($id) {
         global $controller, $out;
-        
+
         $sql = "DELETE FROM pizzas WHERE id = :id";
-        
+
         $stm = $controller->exec($sql, array(
-           ":id" => $id 
+            ":id" => $id
         ));
-        
+
         $out->addStatus("delete-pizza", $stm->errorInfo());
         $out->add("delete-pizza", $id);
 
