@@ -1,110 +1,71 @@
 <?php
 
-$TABLES = array(
-    "pizzas" => "id",
-    "users" => "name"
-);
-
-# open db
 $controller = new Controller();
 $out = Output::getInstance();
 $pizza = new Pizza();
 $user = new User();
+main();
 
-$tables = array_keys($TABLES);
-foreach ($tables as $table) {
-    request($controller->getDB(), $table, $TABLES[$table], $retVal);
-}
+/**
+ * main function
+ */
+function main() {
+    global $out, $pizza, $controller, $user;
 
-if (isset($_GET["pizza-users"])) {
-    if (!empty($_GET["pizza-users"])) {
-        $pizza->getPizzaUsersByID($_GET["pizza-users"]);
-    } else {
-        $pizza->getPizzaUsers();
-    }
-}
+    $http_raw = file_get_contents("php://input");
 
-$http_raw = file_get_contents("php://input");
-
-
-if (isset($http_raw) && !empty($http_raw)) {
-
-    $obj = json_decode($http_raw, true);
-
-    if (isset($_GET["add-user"])) {
-
-        if (isset($obj["name"])) {
-            $retVal["status"] = $controller->addUser($obj["name"]);
+    if (isset($_GET["pizza-users"])) {
+        if (!empty($_GET["pizza-users"])) {
+            $pizza->getPizzaUsersByID($_GET["pizza-users"]);
         } else {
-            $retVal["error"] = $obj;
+            $pizza->getPizzaUsers();
         }
     }
-    if (isset($_GET["add-pizza"])) {
-        $pizza->addPizza($obj["name"], $obj["maxpersons"], $obj["price"], $obj["content"]);
-    }
-    if (isset($_GET["set-ready"])) {
-        $user->setReady($obj["id"], $obj["bool"]);
-    }
-    if (isset($_GET["change-pizza"])) {
-        $user->changePizza($obj["id"], $obj["to"]);
-    }
-    if (isset($_GET["pay"])) {
-        if ($controller->checkSecret($obj["secret"])) {
-            $user->pay($obj["id"], $obj["bool"]);
-        }
-    }
-    if (isset($_GET["buy-pizza"])) {
-        if ($controller->checkSecret($obj["secret"])) {
-            $pizza->buyPizza($obj["id"]);
-        }
-    }
-}
-
-$out->write();
-
-function getTables($db) {
-
-    $tablesquery = $db->query("SELECT name FROM sqlite_master WHERE type='table';");
-    $i = 0;
-    $tablesRaw = $tablesquery->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($tablesRaw as $table) {
-
-        $tables[$i] = $table['name'];
-        $i++;
-    }
-
-    $tablesquery->closeCursor();
-
-    return $tables;
-}
-
-function request($db, $tag, $searchTag, $retVal) {
-
-    $tagObject = $_GET[$tag];
-
-    if (isset($tagObject)) {
-
-        // options
-        if (!empty($tagObject)) {
-            $STMT = $db->prepare("SELECT * FROM " . $tag . " WHERE " . $searchTag . " = ?");
-            $STMT->execute(array($tagObject));
+    if (isset($_GET["pizzas"])) {
+        if (!empty($_GET["pizzas"])) {
+            $pizza->getPizza($_GET["pizzas"]);
         } else {
-            $STMT = $db->query("SELECT * FROM " . $tag);
+            $pizza->getPizzas();
         }
-
-        $out = Output::getInstance();
-
-        if ($STMT !== FALSE) {
-
-            $out->add($tag, $STMT->fetchAll(PDO::FETCH_ASSOC));
-            $out->addStatus($tag, $STMT->errorInfo());
-        } else {
-            $out->addStatus($tag, array("99998", 90, "Failed to create statement"));
-        }
-        $STMT->closeCursor();
     }
 
-    return $retVal;
+    if (isset($http_raw) && !empty($http_raw)) {
+
+        $obj = json_decode($http_raw, true);
+
+        if (isset($_GET["add-user"])) {
+
+            if (isset($obj["name"])) {
+                $retVal["status"] = $controller->addUser($obj["name"]);
+            } else {
+                $retVal["error"] = $obj;
+            }
+        }
+        if (isset($_GET["add-pizza"])) {
+            $pizza->addPizza($obj["name"], $obj["maxpersons"], $obj["price"], $obj["content"]);
+        }
+        if (isset($_GET["set-ready"])) {
+            $user->setReady($obj["id"], $obj["bool"]);
+        }
+        if (isset($_GET["change-pizza"])) {
+            $user->changePizza($obj["id"], $obj["to"]);
+        }
+        if (isset($_GET["pay"])) {
+            if ($controller->checkSecret($obj["secret"])) {
+                $user->pay($obj["id"], $obj["bool"]);
+            }
+        }
+        if (isset($_GET["buy-pizza"])) {
+            if ($controller->checkSecret($obj["secret"])) {
+                $pizza->buyPizza($obj["id"]);
+            }
+        }
+        if (isset($_GET["check-user"])) {
+            $user->check($obj["id"], $obj["name"]);
+        }
+    }
+
+    $out->write();
 }
 
 /**
@@ -266,7 +227,6 @@ class Controller {
         return $this->execute($stm, $args);
     }
 
-    
     /**
      * Adds the user to database.
      * @param type $name name of the user
@@ -397,6 +357,27 @@ class User {
 
         $this->pizza->checkPizzaLock($id);
     }
+    
+    function check($id, $name) {
+        global $controller, $out;
+        
+        $sql = "SELECT * FROM users WHERE id = :id AND name = :name";
+        
+        $stm = $controller->exec($sql, array(
+           ":id" => $id,
+            ":name" => $name
+        ));
+        
+        $out->addStatus("check-user", $stm->errorInfo());
+        
+        $value = $stm->fetchAll(PDO::FETCH_ASSOC);
+        if (count($value) == 1) {
+            $out->add("check-user", "valid");
+        } else {
+            $out->add("check-user", "not valid");
+        }
+        $stm->closeCursor();
+    }
 
 }
 
@@ -469,7 +450,7 @@ class Pizza {
 
         $result = array();
 
-        $pizzas = $this->getPizzas();
+        $pizzas = $this->getPizzasQuery();
 
         foreach ($pizzas as $pizza) {
             $result[] = array(
@@ -488,7 +469,6 @@ class Pizza {
      * Get all pizzas in database.
      * @global type $out
      * @global Controller $controller
-     * @return type
      */
     function getPizzas() {
         global $out, $controller;
@@ -497,7 +477,48 @@ class Pizza {
 
         $stm = $controller->exec($sql, array());
 
+        $out->addStatus("pizzas", $stm->errorInfo());
+        $out->add("pizzas", $stm->fetchAll(PDO::FETCH_ASSOC));
+
+        $stm->closeCursor();
+    }
+
+    /**
+     * Get all pizzas in database (only for reuse).
+     * @global Controller $controller
+     * @return type
+     */
+    private function getPizzasQuery() {
+        global $controller;
+
+        $sql = "SELECT * FROM pizzas";
+
+        $stm = $controller->exec($sql, array());
+
         $pizzas = $stm->fetchAll(PDO::FETCH_ASSOC);
+        $stm->closeCursor();
+
+        return $pizzas;
+    }
+
+    /**
+     * Returns a pizza from database.
+     * @global type $out
+     * @global Controller $controller
+     * @param type $id id of the pizza.
+     * @return type
+     */
+    function getPizza($id) {
+        global $out, $controller;
+
+        $sql = "SELECT * FROM pizzas WHERE id = :id";
+
+        $stm = $controller->exec($sql, array(
+            ":id" => $id
+        ));
+
+        $out->addStatus("pizzas", $stm->errorInfo());
+        $out->add("pizzas", $stm->fetchAll(PDO::FETCH_ASSOC));
         $stm->closeCursor();
 
         return $pizzas;
