@@ -357,19 +357,19 @@ class User {
 
         $this->pizza->checkPizzaLock($id);
     }
-    
+
     function check($id, $name) {
         global $controller, $out;
-        
+
         $sql = "SELECT * FROM users WHERE id = :id AND name = :name";
-        
+
         $stm = $controller->exec($sql, array(
-           ":id" => $id,
+            ":id" => $id,
             ":name" => $name
         ));
-        
+
         $out->addStatus("check-user", $stm->errorInfo());
-        
+
         $value = $stm->fetchAll(PDO::FETCH_ASSOC);
         if (count($value) == 1) {
             $out->add("check-user", "valid");
