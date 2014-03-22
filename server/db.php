@@ -68,6 +68,11 @@ function main() {
                 $pizza->unlock($obj["id"]);
             }
         }
+        if (isset($_GET["delete-pizza"])) {
+            if ($controller->checkSecret($obj["secret"])) {
+                $pizza->delete($obj["id"]);
+            }
+        }
     }
 
     $out->write();
@@ -449,8 +454,25 @@ class Pizza {
         $stm->closeCursor();
     }
 
+    /**
+     * Deletes a pizza from database
+     * @global Controller $controller
+     * @global type $out
+     * @param type $id id of the pizza.
+     */
     public function delete($id) {
+        global $controller, $out;
         
+        $sql = "DELETE FROM pizzas WHERE id = :id";
+        
+        $stm = $controller->exec($sql, array(
+           ":id" => $id 
+        ));
+        
+        $out->addStatus("delete-pizza", $stm->errorInfo());
+        $out->add("delete-pizza", $id);
+
+        $stm->closeCursor();
     }
 
     /**
