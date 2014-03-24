@@ -101,8 +101,6 @@ var gui={
 		var wrapper=gui.build("div", "pizza");
 		wrapper.setAttribute("data-id", nodePizza.id);
 		var wantLink=gui.build("span", "button want-link", "Dabei!");
-		//wantLink.onclick=pizza.changeParticipation;
-		wantLink.href="#";
 
 		wrapper.appendChild(wantLink);
 		wrapper.appendChild(gui.build("h3", "pizza-name "+((nodePizza.bought==1)?"strike":""), nodePizza.name, gui.build("em","lock-display",(nodePizza.lock==1&&nodePizza.bought!=1)?" (Locked)":"")));
@@ -114,17 +112,14 @@ var gui={
 		if(pizza.admin){
 			var deleteLink=gui.build("span", "button", "Delete");
 			deleteLink.onclick=pizza.deletePizza;
-			deleteLink.href="#";
 			wrapper.appendChild(deleteLink);
 		
 			var buyLink=gui.build("span", "button", "Mark bought");
 			buyLink.onclick=pizza.buyPizza;
-			buyLink.href="#";
 			wrapper.appendChild(buyLink);
 			
 			var unlockLink=gui.build("span", "button", nodePizza.lock==1?"Unlock":"Lock");
 			unlockLink.onclick=pizza.togglePizzaLock;
-			unlockLink.href="#";
 			wrapper.appendChild(unlockLink);
 		}
 		return wrapper;
@@ -305,12 +300,13 @@ var pizza={
 					//find node with this pizza
 					for(var c=0;c<pizzanodes.length;c++){
 						if(pizzanodes[c].getAttribute("data-id")==data.pizzausers[i].id){
-							//add user count to user stats
+							//get elements to be modified in this process
 							var header=pizzanodes[c].getElementsByClassName("pizza-name")[0];
 							var lockDisplay=header.getElementsByClassName("lock-display")[0];
 							var persons=pizzanodes[c].getElementsByClassName("persons")[0];
 							var people=pizzanodes[c].getElementsByClassName("people")[0];
 							var participate=pizzanodes[c].getElementsByClassName("want-link")[0];
+							
 							participate.textContent="Dabei!";
 							participate.onclick=pizza.changeParticipation;
 
@@ -320,20 +316,9 @@ var pizza={
 							else{
 								participate.style.display="none";
 							}
-							
-							if(data.pizzausers[i].bought==1){
-								header.style.className="title strike";
-							}
-							else{
-								header.style.className="title";
-							}
-
-							if(data.pizzausers[i].lock==1){
-								lockDisplay.textContent=" (Locked)";
-							}
-							else{
-								lockDisplay.textContent="";
-							}
+						
+							header.style.className="title"+((data.pizzausers[i].bought==1)?" strike":"");	
+							lockDisplay.textContent=(data.pizzausers[i].lock==1)?" (Locked)":"";
 
 							persons.textContent="Anzahl Personen: "+data.pizzausers[i].users.length+"/"+data.pizzausers[i].maxpersons;
 						
@@ -361,8 +346,9 @@ var pizza={
 						}
 					}
 					if(c==pizzanodes.length){
-						//if not found, do pull TODO
-						window.alert("Pizza "+data.pizzausers[i].id+" not found locally!");
+						//if not found, do pull
+						//window.alert("Pizza "+data.pizzausers[i].id+" not found locally!");
+						pizza.updateAll();
 					}
 				}
 			}
@@ -383,10 +369,8 @@ var pizza={
 		//try to register
 		api.asyncPost("add-user", JSON.stringify({"name":uname}), function(data){
 			//window.alert(JSON.stringify(data));
-			if(data.status.db=="ok"&&data.user!=0){
-				pizza.userinfo={};
-				pizza.userinfo.name=uname;
-				pizza.userinfo.id=data.user;
+			if(data.status.db=="ok"&&data.user&&data.user!=0){
+				pizza.userinfo={"name":uname, "id":data.user};
 				cookies.setCookie("pizza_user", JSON.stringify(pizza.userinfo));
 				gui.displayInterface("main");
 				pizza.updateAll();
