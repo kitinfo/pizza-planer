@@ -100,13 +100,23 @@ var gui={
 	createPizzaNode:function(nodePizza){
 		var wrapper=gui.build("div", "pizza");
 		wrapper.setAttribute("data-id", nodePizza.id);
+		wrapper.setAttribute("data-price", nodePizza.price);
 		var wantLink=gui.build("span", "button want-link", "Dabei!");
 
 		wrapper.appendChild(wantLink);
 		wrapper.appendChild(gui.build("h3", "pizza-name "+((nodePizza.bought==1)?"strike":""), nodePizza.name, gui.build("em","lock-display",(nodePizza.lock==1&&nodePizza.bought!=1)?" (Locked)":"")));
 		wrapper.appendChild(gui.build("span", "contents", nodePizza.content));
 		wrapper.appendChild(gui.build("div", "persons", "Anzahl Personen: "+nodePizza.maxpersons));
-		wrapper.appendChild(gui.build("div", "price", "Preis (Gesamt/pro Person): "+nodePizza.price+"/"+(nodePizza.price/nodePizza.maxpersons)));
+		var price = gui.build("div", "price", "Preis (Gesamt/pro Person (derzeitiger pro Person)): "+nodePizza.price+"/"+(nodePizza.price/nodePizza.maxpersons + " ("));
+		var span = document.createElement('span');
+		span.setAttribute('id', "currentPrice" + nodePizza.id);
+		span.currentCounter = 0;
+		span.textContent = span.currentCounter;
+		span.classList.add("currentPrice");
+		price.appendChild(span);
+		price.appendChild(document.createTextNode(")"));
+		wrapper.appendChild(price);
+		
 		wrapper.appendChild(gui.build("div", "people"));
 
 		if(pizza.admin){
@@ -323,11 +333,20 @@ var pizza={
 							persons.textContent="Anzahl Personen: "+data.pizzausers[i].users.length+"/"+data.pizzausers[i].maxpersons;
 						
 							people.innerHTML="";
+							var counterElem = pizzanodes[c].getElementsByClassName("currentPrice")[0];
+							counterElem.textContent = pizzanodes[c].getAttribute("data-price");
 							if(data.pizzausers[i].users.length>0){
 								//add users to people
 								people.innerText="Beteiligte:";
+								
+								
+								
+								var currentPersons = 0;
+								
+								
 								var list=gui.build("ul");
 								for(var d=0;d<data.pizzausers[i].users.length;d++){
+									currentPersons++;
 									list.appendChild(gui.build("li",undefined,data.pizzausers[i].users[d].name+(data.pizzausers[i].users[d].ready==1?" (Ready)":"")));
 									if(data.pizzausers[i].users[d].name==pizza.userinfo.name){
 										if(data.pizzausers[i].lock!=1){
@@ -340,6 +359,7 @@ var pizza={
 										}
 									}
 								}
+								counterElem.textContent = pizzanodes[c].getAttribute("data-price") / currentPersons;
 								people.appendChild(list);
 							}
 							break;
