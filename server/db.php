@@ -6,6 +6,7 @@ require_once 'output.php';
 
 $db = new Database();
 $out = Output::getInstance();
+$controller = new Controller();
 $pizza = new Pizza();
 $user = new User();
 main();
@@ -14,7 +15,7 @@ main();
  * main function
  */
 function main() {
-    global $out, $pizza, $db, $user;
+    global $out, $pizza, $db, $user, $controller;
 
     $http_raw = file_get_contents("php://input");
 
@@ -90,17 +91,19 @@ class Controller {
      * @return boolean true if same as in database.
      */
     public function checkSecret($secret) {
+	global $db, $out;
+	
 	$sql = "SELECT * FROM system WHERE key = 'secret'";
 
-	$stm = $this->exec($sql, array());
+	$stm = $db->exec($sql, array());
 
 	$secretTable = $stm->fetch();
 	$stm->closeCursor();
 	if ($secretTable["value"] == $secret) {
-	    Output::getInstance()->addStatus("access", array("0", null, "granted"));
+	    $out->addStatus("access", array("0", null, "granted"));
 	    return true;
 	}
-	Output::getInstance()->addStatus("access", array("99997", 97, "denied"));
+	$out->addStatus("access", array("99997", 97, "denied"));
 	return false;
     }
 
@@ -111,6 +114,27 @@ class Controller {
  */
 class User {
 
+    function getID($token) {
+	
+	global $db, $out;
+	
+	$out->add("debug-token", $token);
+	
+	$sql = "SELECT id FROM users WHERE token = :token";
+	
+	$param = array(
+	  ":token" => $token  
+	);
+	
+	$stm = $db->exec($sql, $param);
+	
+	if ($stm->errorCode() == 0) {
+	    $id = $stm->fetch(PDO::FETCH_OBJ)->id;
+	    return $id;
+	}
+	return -1;
+    }
+    
     /**
      * Switches the user assignment to another pizza
      * @global type $out
@@ -118,9 +142,16 @@ class User {
      * @param type $userid id of the user
      * @param type $to id of the pizza
      */
-    function changePizza($userid, $to) {
+    function changePizza($token, $to) {
 	global $out, $db, $pizza;
 
+	$userid = $this->getID($token);
+	
+	if ($userid < 0 ) {
+	    return;
+	}
+	
+	
 	if ($pizza->lockStatus($pizza->getPizzaFromUserID($userid))) {
 	    $out->addStatus("set-ready", array(
 		"75834", 87, "Pizza is locked"
@@ -148,8 +179,10 @@ class User {
 	$stm->closeCursor();
     }
 
-    function isReady($id) {
+    function isReady($token) {
 	global $db;
+	
+	$id = $this->getID($token);
 
 	$sql = "SELECT ready FROM users WHERE id = :id";
 
@@ -173,8 +206,10 @@ class User {
      * @param type $id id of the user
      * @param type $bool true if the user had paid.
      */
-    function pay($id, $bool) {
+    function pay($token, $bool) {
 	global $out, $db;
+	
+	$id = $this->getID($token);
 
 	$sql = "UPDATE users SET paid = :bool WHERE id = :id";
 
@@ -196,9 +231,10 @@ class User {
      * @param type $id id of the user
      * @param type $bool true if ready
      */
-    function setReady($id) {
+    function setReady($token) {
 	global $db, $out, $pizza;
 
+	$id = $this->getID($token);
 
 	if ($pizza->lockStatus($pizza->getPizzaFromUserID($id) == 1)) {
 	    $out->addStatus("set-ready", array(
@@ -312,8 +348,9 @@ class Pizza {
      */
     public function buyPizza($id) {
 	global $out, $db;
+	
 
-	if ($this->checkPizzaForLock($id)) {
+	if ($this->lockStatus($id)) {
 
 	    $sql = "UPDATE pizzas SET bought = 1 WHERE id = :id";
 
@@ -441,11 +478,8 @@ class Pizza {
      * @global type $out
      */
     function getPizzaUsers() {
-
 	global $out;
-
 	$result = array();
-
 	$pizzas = $this->getPizzasQuery();
 
 	foreach ($pizzas as $pizza) {
@@ -457,7 +491,6 @@ class Pizza {
 		"maxpersons" => $pizza["maxpersons"]
 	    );
 	}
-
 	$out->add("pizzausers", $result);
     }
 
@@ -573,7 +606,7 @@ class Pizza {
 	    return true;
 	}
 
-	$out->addStatus("pizzalock", array("0", null, "notReady"));
+	$out->addStatus("pizzalock", array("0", null, "notReady, not full"));
 	return false;
     }
 
