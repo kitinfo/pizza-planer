@@ -9,7 +9,34 @@ $out = Output::getInstance();
 $controller = new Controller();
 $pizza = new Pizza();
 $user = new User();
+
+
+
+
+
 main();
+
+function getPoint() {
+    $api_points = array(
+	"pizza-users",
+	"pizzas",
+	"add-users",
+	"add-pizza",
+	"toggle-ready",
+	"change-pizza",
+	"pay",
+	"buy-pizza",
+	"check-user",
+	"toggle-lock",
+	"delete-pizza"
+    );
+
+    foreach ($api_points as $point) {
+	if (isset($_GET[$point])) {
+	    return $point;
+	}
+    }
+}
 
 /**
  * main function
@@ -19,64 +46,81 @@ function main() {
 
     $http_raw = file_get_contents("php://input");
 
-    if (isset($_GET["pizza-users"])) {
-	if (!empty($_GET["pizza-users"])) {
-	    $pizza->getPizzaUsersByID($_GET["pizza-users"]);
-	} else {
-	    $pizza->getPizzaUsers();
-	}
-    }
-    if (isset($_GET["pizzas"])) {
-	if (!empty($_GET["pizzas"])) {
-	    $pizza->getPizza($_GET["pizzas"]);
-	} else {
-	    $pizza->getPizzas();
-	}
+    $getter = getPoint();
+    $out->add("debug-endpoint", $getter);
+
+    switch ($getter) {
+
+	case "pizza-users":
+	    if (!empty($_GET["pizza-users"])) {
+		$pizza->getPizzaUsersByID($_GET["pizza-users"]);
+	    } else {
+		$pizza->getPizzaUsers();
+	    }
+	case "pizzas":
+	    if (!empty($_GET["pizzas"])) {
+		$pizza->getPizza($_GET["pizzas"]);
+	    } else {
+		$pizza->getPizzas();
+	    }
+	    break;
+	default:
+	    // no get request
+	    $out->add("debug-get-request", "no action");
+	    break;
     }
 
     if (isset($http_raw) && !empty($http_raw)) {
 
 	$obj = json_decode($http_raw, true);
 
-	if (isset($_GET["add-user"])) {
 
-	    if (isset($obj["name"])) {
-		$retVal["status"] = $user->add($obj["name"]);
-	    } else {
-		$retVal["error"] = $obj;
-	    }
-	}
-	if (isset($_GET["add-pizza"])) {
-	    $pizza->addPizza($obj["name"], $obj["maxpersons"], $obj["price"], $obj["content"]);
-	}
-	if (isset($_GET["toggle-ready"])) {
-	    $user->setReady($obj["id"]);
-	}
-	if (isset($_GET["change-pizza"])) {
-	    $user->changePizza($obj["id"], $obj["to"]);
-	}
-	if (isset($_GET["pay"])) {
-	    if ($controller->checkSecret($obj["secret"])) {
-		$user->pay($obj["id"], $obj["bool"]);
-	    }
-	}
-	if (isset($_GET["buy-pizza"])) {
-	    if ($controller->checkSecret($obj["secret"])) {
-		$pizza->buyPizza($obj["id"]);
-	    }
-	}
-	if (isset($_GET["check-user"])) {
-	    $user->check($obj["id"], $obj["name"]);
-	}
-	if (isset($_GET["toggle-lock"])) {
-	    if ($controller->checkSecret($obj["secret"])) {
-		$pizza->toggleLock($obj["id"]);
-	    }
-	}
-	if (isset($_GET["delete-pizza"])) {
-	    if ($controller->checkSecret($obj["secret"])) {
-		$pizza->delete($obj["id"]);
-	    }
+	switch ($getter) {
+
+
+	    case "add-user":
+
+		if (isset($obj["name"])) {
+		    $retVal["status"] = $user->add($obj["name"]);
+		} else {
+		    $retVal["error"] = $obj;
+		}
+		break;
+	    case "add-pizza":
+		$pizza->addPizza($obj["name"], $obj["maxpersons"], $obj["price"], $obj["content"]);
+		break;
+	    case "toggle-ready":
+		$user->setReady($obj["id"]);
+		break;
+	    case "change-pizza":
+		$user->changePizza($obj["id"], $obj["to"]);
+		break;
+	    case "pay":
+		if ($controller->checkSecret($obj["secret"])) {
+		    $user->pay($obj["id"], $obj["bool"]);
+		}
+		break;
+	    case "buy-pizza":
+		if ($controller->checkSecret($obj["secret"])) {
+		    $pizza->buyPizza($obj["id"]);
+		}
+		break;
+	    case "check-user":
+		$user->check($obj["id"], $obj["name"]);
+		break;
+	    case "toggle-lock":
+		if ($controller->checkSecret($obj["secret"])) {
+		    $pizza->toggleLock($obj["id"]);
+		}
+		break;
+	    case "delete-pizza":
+		if ($controller->checkSecret($obj["secret"])) {
+		    $pizza->delete($obj["id"]);
+		}
+		break;
+	    default:
+		$out->add("command", "no action.");
+		break;
 	}
     }
 
@@ -92,7 +136,7 @@ class Controller {
      */
     public function checkSecret($secret) {
 	global $db, $out;
-	
+
 	$sql = "SELECT * FROM system WHERE key = 'secret'";
 
 	$stm = $db->exec($sql, array());
@@ -115,26 +159,26 @@ class Controller {
 class User {
 
     function getID($token) {
-	
+
 	global $db, $out;
-	
+
 	$out->add("debug-token", $token);
-	
+
 	$sql = "SELECT id FROM users WHERE token = :token";
-	
+
 	$param = array(
-	  ":token" => $token  
+	    ":token" => $token
 	);
-	
+
 	$stm = $db->exec($sql, $param);
-	
+
 	if ($stm->errorCode() == 0) {
 	    $id = $stm->fetch(PDO::FETCH_OBJ)->id;
 	    return $id;
 	}
 	return -1;
     }
-    
+
     /**
      * Switches the user assignment to another pizza
      * @global type $out
@@ -146,12 +190,12 @@ class User {
 	global $out, $db, $pizza;
 
 	$userid = $this->getID($token);
-	
-	if ($userid < 0 ) {
+
+	if ($userid < 0) {
 	    return;
 	}
-	
-	
+
+
 	if ($pizza->lockStatus($pizza->getPizzaFromUserID($userid))) {
 	    $out->addStatus("set-ready", array(
 		"75834", 87, "Pizza is locked"
@@ -181,7 +225,7 @@ class User {
 
     function isReady($token) {
 	global $db;
-	
+
 	$id = $this->getID($token);
 
 	$sql = "SELECT ready FROM users WHERE id = :id";
@@ -208,7 +252,7 @@ class User {
      */
     function pay($token, $bool) {
 	global $out, $db;
-	
+
 	$id = $this->getID($token);
 
 	$sql = "UPDATE users SET paid = :bool WHERE id = :id";
@@ -271,7 +315,7 @@ class User {
 	    ":token" => $token,
 	    ":name" => $name
 	));
-	
+
 	$out->addStatus("debug-token", $token);
 	$out->addStatus("debug-name", $name);
 
@@ -293,10 +337,10 @@ class User {
     public function add($name) {
 
 	global $db, $out;
-	
+
 	$token = uniqid(session_id());
-	
-	
+
+
 	$sql = "INSERT INTO users(name, source, token) VALUES(:name, :source, :token)";
 
 	$stm = $db->exec($sql, array(
@@ -319,7 +363,7 @@ class User {
     public function get($token) {
 
 	global $out, $db;
-	
+
 	$sql = "SELECT * FROM users WHERE token = :token";
 
 	$stm = $this->prepare($sql);
@@ -348,7 +392,7 @@ class Pizza {
      */
     public function buyPizza($id) {
 	global $out, $db;
-	
+
 
 	if ($this->lockStatus($id)) {
 
@@ -370,7 +414,7 @@ class Pizza {
 
     public function toggleLock($id) {
 
-	// get lock status
+// get lock status
 	$this->setLock($id, $this->lockStatus($id));
     }
 
