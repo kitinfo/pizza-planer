@@ -20,7 +20,7 @@ function getPoint() {
     $api_points = array(
 	"pizza-users",
 	"pizzas",
-	"add-users",
+	"add-user",
 	"add-pizza",
 	"toggle-ready",
 	"change-pizza",
