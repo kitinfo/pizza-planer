@@ -63,7 +63,16 @@ var gui={
 
 		return node;
 	},
+	buildUserPayButton: function(user) {
+		var button = document.createElement('span');
+		button.classList.add("button");
+		button.textContent = "pay";
+		button.addEventListener("click", function() {
+			pizza.payUser(user);
+		});
 
+		return button;
+	},
 	updateMovingParts:function(){
 		gui.elem("main-user").textContent=pizza.userinfo.name;
 		gui.elem("new-name").value="";
@@ -208,6 +217,22 @@ var pizza={
 		});
 	},
 
+	payUser: function(user) {
+		user.secret = pizza.admin;
+		user.bool = true;
+		
+		api.asyncPost("pay", JSON.stringify(user), function(data) {
+			if (data.status.db=="ok"&&data.status.access[2]=="granted") {
+				gui.statusDisplay("User marked as paid.");
+			} else if (data.status.access=="denied") {
+				gui.statusDisplay("Admin access denied");
+			} else {
+				gui.statusDisplay("Broken...");
+			}
+			pizza.updateUsers();
+		});
+	},
+
 	buyPizza:function(event){
 		var pizzaId=event.target.parentNode.getAttribute("data-id");
 		api.asyncPost("buy-pizza", JSON.stringify({"id":pizzaId,"secret":pizza.admin}), function(data){
@@ -347,7 +372,30 @@ var pizza={
 								var list=gui.build("ul");
 								for(var d=0;d<data.pizzausers[i].users.length;d++){
 									currentPersons++;
-									list.appendChild(gui.build("li",undefined,data.pizzausers[i].users[d].name+(data.pizzausers[i].users[d].ready==1?" (Ready)":"")));
+
+
+									var elem = document.createElement('li');
+									var span = document.createElement('span');
+									span.textContent = data.pizzausers[i].users[d].name;
+									if (data.pizzausers[i].users[d].ready == 1) {
+										span.textContent += " (Ready)";
+
+										if (pizza.admin) {
+											if (data.pizzausers[i].users[d].paid == 1) {
+												span.textContent += "(paid)";
+												elem.appendChild(span);
+											} else {
+												elem.appendChild(span);	
+												elem.appendChild(gui.buildUserPayButton(data.pizzausers[i].users[d]));
+											}
+										} else {
+											elem.appendChild(span);
+										}
+									} else {
+										elem.appendChild(span);
+									}
+
+									list.appendChild(elem);
 									if(data.pizzausers[i].users[d].name==pizza.userinfo.name){
 										if(data.pizzausers[i].lock!=1){
 											participate.style.display="inline-block";

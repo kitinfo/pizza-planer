@@ -24,6 +24,7 @@ function getPoint() {
 	"add-pizza",
 	"toggle-ready",
 	"change-pizza",
+	"pay-user",
 	"pay",
 	"buy-pizza",
 	"check-user",
@@ -97,7 +98,7 @@ function main() {
 		break;
 	    case "pay":
 		if ($controller->checkSecret($obj["secret"])) {
-		    $user->pay($obj["id"], $obj["bool"]);
+		    $user->pay($obj["name"], $obj["bool"]);
 		}
 		break;
 	    case "buy-pizza":
@@ -250,15 +251,13 @@ class User {
      * @param type $id id of the user
      * @param type $bool true if the user had paid.
      */
-    function pay($token, $bool) {
+    function pay($name, $bool) {
 	global $out, $db;
 
-	$id = $this->getID($token);
-
-	$sql = "UPDATE users SET paid = :bool WHERE id = :id";
+	$sql = "UPDATE users SET paid = :bool WHERE name = :name";
 
 	$stm = $db->exec($sql, array(
-	    ":id" => $id,
+	    ":name" => $name,
 	    ":bool" => $bool
 	));
 
